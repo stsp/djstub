@@ -3,8 +3,11 @@ CFLAGS = -mcmodel=small -mdosx -Wall
 LDFLAGS = -mcmodel=small -mdosx
 OBJCOPY = objcopy
 O_BDFARCH=$(shell $(OBJCOPY) --info | head -n 2 | tail -n 1)
+PROG = dosemu2-stubify
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
 
-all: dosemu2-stubify
+all: $(PROG)
 
 .INTERMEDIATE: stub.exe
 
@@ -21,5 +24,8 @@ dosemu2-stubify: stubify.o stub.o
 stubify.o: stubify.c
 	cc -Wall $< -c -o $@
 
+install:
+	install -D -t $(DESTDIR)$(BINDIR) -m 0755 $(PROG)
+
 clean:
-	rm -f *.o stub.exe dosemu2-stubify
+	rm -f *.o stub.exe $(PROG)
