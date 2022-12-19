@@ -1,0 +1,16 @@
+Source: djstub
+Section: contrib/otherosfs
+Priority: optional
+Maintainer: Stas Sergeev <stsp@users.sourceforge.net>
+Standards-Version: 3.9.7
+Build-Depends:
+    make,
+    gcc-ia16-elf,
+    debhelper (>= 9~)
+Homepage: https://github.com/stsp/djstub
+
+Package: djstub
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: go32-compatible COFF stub
+ Re-implementation of the djgpp COFF stub.

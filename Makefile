@@ -22,10 +22,13 @@ dosemu2-stubify: stubify.o stub.o
 	cc -o $@ $^
 
 stubify.o: stubify.c
-	cc -Wall $< -c -o $@
+	cc -Wall $< -c -g -o $@
 
 install:
 	install -D -t $(DESTDIR)$(BINDIR) -m 0755 $(PROG)
+
+deb:
+	debuild -i -us -uc -b
 
 clean:
 	rm -f *.o stub.exe $(PROG)
