@@ -144,6 +144,10 @@ void coff2exe(char *fname)
       if (partial)
 	coffset += partial - 512;
     }
+    else if (buf[0] == 0x33 && buf[1] == 0x50) /* CauseWay 3P */
+    {
+      coffset += *(unsigned int *)&buf[2];
+    }
     else if (buf[0] == 0x4c && buf[1] == 0x01) /* it's a COFF */
     {
       break;
