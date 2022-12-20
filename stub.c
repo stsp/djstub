@@ -142,24 +142,26 @@ static long _long_read(int handle, char __far *buf, unsigned long offs,
     unsigned ret_hi, ret_lo, dummy;
     int c;
     asm volatile(
+          ".arch i386\n"
           "push %%ds\n"
           "mov %%di, %%ds\n"
           "mov %[size], %%cx\n"
-          "data32 rol $16, %%cx\n"
+          "rol $16, %%ecx\n"
           "mov 2+%[size], %%cx\n"
-          "data32 rol $16, %%cx\n"
+          "rol $16, %%ecx\n"
           "add %[offs], %%dx\n"
-          "data32 rol $16, %%dx\n"
+          "rol $16, %%edx\n"
           "mov 2+%[offs], %%dx\n"
-          "data32 rol $16, %%dx\n"
+          "rol $16, %%edx\n"
           "int $0x21\n"
           "pop %%ds\n"
-          ".byte 0x0f, 0x92, 0xc3\n" // setc %%bl
+          "setc %%bl\n"
           "movb $0, %%bh\n"
           "mov %%ax, %0\n"
-          "data32 shr $16, %%ax\n"
-          "data32 xor %%cx, %%cx\n"  // clear high part of ecx
-          "data32 xor %%dx, %%dx\n"  // clear high part of edx
+          "shr $16, %%eax\n"
+          "xor %%ecx, %%ecx\n"  // clear high part of ecx
+          "xor %%edx, %%edx\n"  // clear high part of edx
+          ".arch i286\n"
         : "=r"(ret_lo), "=a"(ret_hi), "=b"(c), "=c"(dummy), "=d"(dummy)
         : "a"(0x3f00), "b"(handle), "D"(FP_SEG(buf)), "d"(FP_OFF(buf)),
           [size]"m"(size), [offs]"m"(offs)
@@ -187,21 +189,23 @@ static void farmemset_bss(void)
     uint32_t size = scns[SCT_BSS].s_size;
     unsigned dummy;
     asm volatile(
+          ".arch i386\n"
           "push %%es\n"
           "mov %%dx, %%es\n"
           "mov %[size], %%cx\n"
-          "data32 rol $16, %%cx\n"
+          "rol $16, %%ecx\n"
           "mov 2+%[size], %%cx\n"
-          "data32 rol $16, %%cx\n"
+          "rol $16, %%ecx\n"
           "add %[offs], %%di\n"
-          "data32 rol $16, %%di\n"
+          "rol $16, %%edi\n"
           "mov 2+%[offs], %%di\n"
-          "data32 rol $16, %%di\n"
-          "data32 shr $1, %%cx\n"
+          "rol $16, %%edi\n"
+          "shr $1, %%ecx\n"
           "addr32 rep stosw\n"
           "pop %%es\n"
-          "data32 xor %%cx, %%cx\n"
-          "data32 xor %%di, %%di\n"
+          "xor %%ecx, %%ecx\n"
+          "xor %%edi, %%edi\n"
+          ".arch i286\n"
         : "=c"(dummy), "=D"(dummy)
         : "a"(0), "d"(FP_SEG(p)), "D"(FP_OFF(p)),
           [size]"m"(size), [offs]"m"(scns[SCT_BSS].s_vaddr)
@@ -408,11 +412,13 @@ int main(int argc, char *argv[], char *envp[])
     fclose(ifile);
 
     asm volatile(
-          ".byte 0x8e, 0xe0\n"  // mov %%ax, %%fs
+          ".arch i386\n"
+          "mov %%ax, %%fs\n"
           "push %%ds\n"
           "pop %%es\n"
           "mov %1, %%ds\n"
-          "data32 ljmp *%2\n"
+          "ljmpl *%2\n"
+          ".arch i286\n"
         :
         : "a"(stubinfo_fs), "r"(clnt_ds), "m"(clnt_entry)
         : "memory");
