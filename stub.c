@@ -212,7 +212,18 @@ static void farmemset_bss(void)
         : "memory");
 }
 
-static char *_basename(char *name)
+static const char *_basename(const char *name)
+{
+    const char *p;
+    p = strrchr(name, '\\');
+    if (!p)
+        p = name;
+    else
+        p++;
+    return p;
+}
+
+static char *_fname(char *name)
 {
     char *p, *p1;
     p = strrchr(name, '\\');
@@ -323,8 +334,8 @@ int main(int argc, char *argv[], char *envp[])
     stubinfo.env_size = i;
     stubinfo.minstack = 0x80000;
     stubinfo.minkeep = 0x4000;
-    strncpy(stubinfo.argv0, argv0, sizeof(stubinfo.argv0));
-    strncpy(stubinfo.basename, _basename(argv0), sizeof(stubinfo.basename));
+    strncpy(stubinfo.argv0, _basename(argv0), sizeof(stubinfo.argv0));
+    strncpy(stubinfo.basename, _fname(argv0), sizeof(stubinfo.basename));
     strncpy(stubinfo.dpmi_server, "CWSDPMI.EXE", sizeof(stubinfo.dpmi_server));
 #define max(a, b) ((a) > (b) ? (a) : (b))
     stubinfo.initial_size = max(scns[SCT_BSS].s_vaddr + scns[SCT_BSS].s_size,
