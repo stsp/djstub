@@ -186,7 +186,7 @@ void coff2exe(char *fname)
 
   lseek(ifile, coffset, SEEK_SET);
 
-  ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0777);
+  ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0644);
   if (ofile < 0)
   {
     perror(ofilename);
