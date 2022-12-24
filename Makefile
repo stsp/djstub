@@ -1,5 +1,5 @@
 CC = ia16-elf-gcc
-CFLAGS = -mcmodel=small -mdosx -Wall
+CFLAGS = -mcmodel=small -mdosx -Os -Wall
 LDFLAGS = -mcmodel=small -mdosx
 OBJCOPY = objcopy
 O_BDFARCH=$(shell $(OBJCOPY) --info | head -n 2 | tail -n 1)

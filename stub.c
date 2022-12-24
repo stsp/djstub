@@ -422,13 +422,14 @@ int main(int argc, char *argv[], char *envp[])
     farmemset_bss();
     fclose(ifile);
 
+    stub_debug("Jump to entry...\n");
     asm volatile(
           ".arch i386\n"
           "mov %%ax, %%fs\n"
           "push %%ds\n"
           "pop %%es\n"
           "mov %1, %%ds\n"
-          "ljmpl *%2\n"
+          "ljmpl *%%es:%2\n"
           ".arch i286\n"
         :
         : "a"(stubinfo_fs), "r"(clnt_ds), "m"(clnt_entry)
