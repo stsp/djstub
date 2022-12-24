@@ -285,9 +285,11 @@ int main(int argc, char *argv[], char *envp[])
             if (partial)
                 coffset += partial - 512;
         } else if (buf[0] == 0x33 && buf[1] == 0x50) { /* CauseWay 3P */
+            uint32_t offs;
             cnt++;
             stub_debug("Found CW header %i at %lx\n", cnt, coffset);
-            coffset += *(uint32_t *)&buf[2];
+            memcpy(&offs, &buf[2], sizeof(offs));
+            coffset += offs;
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
         } else {
