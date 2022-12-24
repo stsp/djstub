@@ -91,6 +91,20 @@ static char __far *client_memory;
 static DPMI_FP clnt_entry;
 static _GO32_StubInfo stubinfo;
 
+static void link_umb(int on)
+{
+    asm volatile("int $0x21\n"
+        :
+        : "a"(0x5803), "b"(on)
+        : "cc");
+    if (on) {
+        asm volatile("int $0x21\n"
+            :
+            : "a"(0x5801), "b"(0x80)
+            : "cc");
+    }
+}
+
 static void dpmi_init(void)
 {
     union REGPACK r = {};
@@ -111,7 +125,9 @@ static void dpmi_init(void)
     }
     sw = MK_FP(r.w.es, r.w.di);
     if (r.w.si) {
+        link_umb(1);
         err = _dos_allocmem(r.w.si, &mseg);
+        link_umb(0);
         if (err) {
             fprintf(stderr, "malloc of %i para failed\n", r.w.si);
             exit(EXIT_FAILURE);
@@ -345,7 +361,10 @@ int main(int argc, char *argv[], char *envp[])
     stubinfo.psp_selector = psp_sel;
     /* DJGPP relies on ds_selector, cs_selector and ds_segment all mapping
      * the same real-mode memory block. */
+    link_umb(1);
     db = _DPMIAllocateDOSMemoryBlock(stubinfo.minkeep >> 4);
+    link_umb(0);
+    stub_debug("rm seg %x\n", db.rm);
     stubinfo.ds_selector = db.pm;
     stubinfo.ds_segment = db.rm;
     /* create alias */
