@@ -1,6 +1,6 @@
 CC = ia16-elf-gcc
-CFLAGS = -mcmodel=small -mdosx -Os -Wall
-LDFLAGS = -mcmodel=small -mdosx
+CFLAGS = -mcmodel=small -mdosx32 -Os -Wall
+LDFLAGS = -mcmodel=small -mdosx32
 OBJCOPY = objcopy
 O_BDFARCH=$(shell $(OBJCOPY) --info | head -n 2 | tail -n 1)
 PROG = dosemu2-stubify

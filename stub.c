@@ -85,8 +85,6 @@ enum { SCT_TEXT, SCT_DATA, SCT_BSS, SCT_MAX };
 
 static struct scn_header scns[SCT_MAX];
 static unsigned short psp_sel;
-static unsigned short cs_sel;
-static unsigned short ds_sel;
 static char __far *client_memory;
 static DPMI_FP clnt_entry;
 static _GO32_StubInfo stubinfo;
@@ -134,17 +132,15 @@ static void dpmi_init(void)
         }
     }
     asm volatile(
-        "mov %5, %%es\n"
-        "lcall *%6\n"
+        "mov %[mseg], %%es\n"
+        "lcall *%[sw]\n"
         "pushf\n"
         "pop %0\n"
         "mov %%es, %1\n"
-        "mov %%cs, %2\n"
-        "mov %%ds, %3\n"
         "push %%ds\n"
         "pop %%es\n"
-        : "=r"(f), "=r"(psp_sel), "=r"(cs_sel), "=r"(ds_sel)
-        : "a"(1), "r"(mseg), "m"(sw)
+        : "=r"(f), "=r"(psp_sel)
+        : "a"(1), [mseg]"r"(mseg), [sw]"m"(sw)
         : "cc", "memory");
     if (f & CF) {
         fprintf(stderr, "DPMI init failed\n");
@@ -425,11 +421,14 @@ int main(int argc, char *argv[], char *envp[])
           "d"(0xffff)
         : "cc");
 
-    /* create alias */
-    asm volatile("int $0x31\n"
+    /* create ds alias */
+    asm volatile(
+        "mov %%ds, %%bx\n"
+        "int $0x31\n"
         : "=a"(stubinfo_fs)
-        : "a"(0xa), "b"(ds_sel));
-    stubinfo_mem = _DPMIGetSegmentBaseAddress(ds_sel) + (uintptr_t)&stubinfo;
+        : "a"(0xa));
+    stubinfo_mem = _DPMIGetSegmentBaseAddress(stubinfo_fs) +
+            (uintptr_t)&stubinfo;
     mem_hi = stubinfo_mem >> 16;
     mem_lo = stubinfo_mem & 0xffff;
     /* set base */
