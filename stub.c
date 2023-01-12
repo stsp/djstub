@@ -21,6 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <fcntl.h>
 #include <dos.h>
 #include <dpmi.h>
 #include <assert.h>
@@ -174,7 +175,7 @@ static void farmemcpy(char __far *ptr, unsigned long offset, char *src,
         : "memory");
 }
 
-static long _long_fread(FILE *file, char __far *buf, unsigned long offset,
+static long _long_read(int file, char __far *buf, unsigned long offset,
     unsigned long size)
 {
     char tmp[PAGE_SIZE];
@@ -183,7 +184,7 @@ static long _long_fread(FILE *file, char __far *buf, unsigned long offset,
 #define min(a, b) ((a) < (b) ? (a) : (b))
     while (size) {
         unsigned todo = min(size, sizeof(tmp));
-        size_t rd = fread(tmp, 1, todo, file);
+        size_t rd = read(file, tmp, todo);
         if (rd) {
             farmemcpy(buf, offset + done, tmp, rd);
             done += rd;
@@ -195,11 +196,11 @@ static long _long_fread(FILE *file, char __far *buf, unsigned long offset,
     return done;
 }
 
-static void read_section(FILE *ifile, long coffset, int sc)
+static void read_section(int ifile, long coffset, int sc)
 {
     long bytes;
-    fseek(ifile, coffset + scns[sc].s_scnptr, SEEK_SET);
-    bytes = _long_fread(ifile, client_memory, scns[sc].s_vaddr,
+    lseek(ifile, coffset + scns[sc].s_scnptr, SEEK_SET);
+    bytes = _long_read(ifile, client_memory, scns[sc].s_vaddr,
             scns[sc].s_size);
     stub_debug("read returned %li\n", bytes);
     if (bytes != scns[sc].s_size) {
@@ -261,7 +262,7 @@ static char *_fname(char *name)
 
 int main(int argc, char *argv[], char *envp[])
 {
-    FILE *ifile;
+    int ifile;
     off_t coffset = 0;
     long coff_file_size;
     int rc, i;
@@ -283,8 +284,8 @@ int main(int argc, char *argv[], char *envp[])
     }
     dpmi_init();
 
-    ifile = fopen(argv[0], "r");
-    if (!ifile) {
+    ifile = open(argv[0], O_RDONLY);
+    if (ifile == -1) {
         fprintf(stderr, "cannot open %s\n", argv[0]);
         exit(EXIT_FAILURE);
     }
@@ -292,7 +293,7 @@ int main(int argc, char *argv[], char *envp[])
         int cnt = 0;
 
         stub_debug("Expecting header at %lx\n", coffset);
-        rc = fread(buf, 1, 6, ifile);
+        rc = read(ifile, buf, 6);
         if (rc != 6) {
             perror("fread()");
             exit(EXIT_FAILURE);
@@ -318,24 +319,23 @@ int main(int argc, char *argv[], char *envp[])
             fprintf(stderr, "not an exe %s at %lx\n", argv[0], coffset);
             exit(EXIT_FAILURE);
         }
-        fseek(ifile, coffset, SEEK_SET);
+        lseek(ifile, coffset, SEEK_SET);
     }
 
-    fseek(ifile, 0, SEEK_END);
-    coff_file_size = ftell(ifile) - coffset;
-    fseek(ifile, coffset, SEEK_SET);
+    coff_file_size = lseek(ifile, 0, SEEK_END) - coffset;
+    lseek(ifile, coffset, SEEK_SET);
     if (coff_file_size < sizeof(chdr) + sizeof(ohdr) + sizeof(scns)) {
         fprintf(stderr, "bad COFF payload, size %lx off %lx\n",
                 coff_file_size, coffset);
         exit(EXIT_FAILURE);
     }
-    fread(&chdr, sizeof(chdr), 1, ifile); /* get the COFF header */
+    read(ifile, &chdr, sizeof(chdr)); /* get the COFF header */
     if (chdr.f_opthdr != sizeof(ohdr)) {
         fprintf(stderr, "bad COFF header\n");
         exit(EXIT_FAILURE);
     }
-    fread(&ohdr, sizeof(ohdr), 1, ifile); /* get the COFF opt header */
-    fread(scns, sizeof(scns[0]), SCT_MAX, ifile);
+    read(ifile, &ohdr, sizeof(ohdr)); /* get the COFF opt header */
+    read(ifile, scns, sizeof(scns[0]) * SCT_MAX);
 #if STUB_DEBUG
     for (i = 0; i < SCT_MAX; i++) {
         struct scn_header *h = &scns[i];
@@ -450,7 +450,7 @@ int main(int argc, char *argv[], char *envp[])
     read_section(ifile, coffset, SCT_TEXT);
     read_section(ifile, coffset, SCT_DATA);
     farmemset_bss();
-    fclose(ifile);
+    close(ifile);
 
     stub_debug("Jump to entry...\n");
     asm volatile(
