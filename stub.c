@@ -148,44 +148,61 @@ static void dpmi_init(void)
     }
 }
 
-static long _long_read(int handle, char __far *buf, unsigned long offs,
-                       long size)
+static void farmemcpy(char __far *ptr, unsigned long offset, char *src,
+    unsigned long length)
 {
-    unsigned ret_hi, ret_lo, dummy;
-    int c;
+    char __far *p = client_memory;
+    unsigned dummy;
     asm volatile(
           ".arch i386\n"
-          "push %%ds\n"
-          "mov %%di, %%ds\n"
+          "push %%es\n"
+          "mov %%dx, %%es\n"
           "mov %[size], %%cx\n"
           "rol $16, %%ecx\n"
           "mov 2+%[size], %%cx\n"
           "rol $16, %%ecx\n"
-          "add %[offs], %%dx\n"
-          "rol $16, %%edx\n"
-          "mov 2+%[offs], %%dx\n"
-          "rol $16, %%edx\n"
-          "int $0x21\n"
-          "pop %%ds\n"
-          "setc %%bl\n"
-          "movb $0, %%bh\n"
-          "mov %%ax, %0\n"
-          "shr $16, %%eax\n"
-          "xor %%ecx, %%ecx\n"  // clear high part of ecx
-          "xor %%edx, %%edx\n"  // clear high part of edx
+          "add %[offs], %%di\n"
+          "rol $16, %%edi\n"
+          "mov 2+%[offs], %%di\n"
+          "rol $16, %%edi\n"
+          "shr $1, %%ecx\n"
+          "addr32 rep movsw\n"
+          "pop %%es\n"
+          "xor %%ecx, %%ecx\n"
+          "xor %%edi, %%edi\n"
           ".arch i286\n"
-        : "=r"(ret_lo), "=a"(ret_hi), "=b"(c), "=c"(dummy), "=d"(dummy)
-        : "a"(0x3f00), "b"(handle), "D"(FP_SEG(buf)), "d"(FP_OFF(buf)),
-          [size]"m"(size), [offs]"m"(offs)
-        : "cc", "memory");
-    return (c ? -1 : (((long)ret_hi << 16) | ret_lo));
+        : "=c"(dummy), "=D"(dummy)
+        : "a"(0), "d"(FP_SEG(p)), "D"(FP_OFF(p)), "S"(src),
+          [size]"m"(length), [offs]"m"(offset)
+        : "memory");
+}
+
+static long _long_fread(FILE *file, char __far *buf, unsigned long offset,
+    unsigned long size)
+{
+    char tmp[PAGE_SIZE];
+    unsigned long done = 0;
+
+#define min(a, b) ((a) < (b) ? (a) : (b))
+    while (size) {
+        unsigned todo = min(size, sizeof(tmp));
+        size_t rd = fread(tmp, 1, todo, file);
+        if (rd) {
+            farmemcpy(buf, offset + done, tmp, rd);
+            done += rd;
+            size -= rd;
+        }
+        if (rd < todo)
+            break;
+    }
+    return done;
 }
 
 static void read_section(FILE *ifile, long coffset, int sc)
 {
     long bytes;
     fseek(ifile, coffset + scns[sc].s_scnptr, SEEK_SET);
-    bytes = _long_read(fileno(ifile), client_memory, scns[sc].s_vaddr,
+    bytes = _long_fread(ifile, client_memory, scns[sc].s_vaddr,
             scns[sc].s_size);
     stub_debug("read returned %li\n", bytes);
     if (bytes != scns[sc].s_size) {
