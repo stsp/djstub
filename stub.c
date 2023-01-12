@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <dos.h>
 #include <dpmi.h>
+#include <assert.h>
 #include "stubinfo.h"
 
 #ifndef PAGE_SIZE
@@ -153,6 +154,7 @@ static void farmemcpy(char __far *ptr, unsigned long offset, char *src,
 {
     char __far *p = client_memory;
     unsigned dummy;
+    assert(!(length & 1)); // speed up memcpy
     asm volatile(
           ".arch i386\n"
           "push %%es\n"
@@ -212,6 +214,7 @@ static void farmemset_bss(void)
     char __far *p = client_memory;
     uint32_t size = scns[SCT_BSS].s_size;
     unsigned dummy;
+    assert(!(size & 1)); // speed up memcpy
     asm volatile(
           ".arch i386\n"
           "push %%es\n"
