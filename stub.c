@@ -264,7 +264,6 @@ int main(int argc, char *argv[], char *envp[])
 {
     int ifile;
     off_t coffset = 0;
-    long coff_file_size;
     int rc, i;
     char buf[16];
     struct coff_header chdr;
@@ -322,20 +321,21 @@ int main(int argc, char *argv[], char *envp[])
         lseek(ifile, coffset, SEEK_SET);
     }
 
-    coff_file_size = lseek(ifile, 0, SEEK_END) - coffset;
-    lseek(ifile, coffset, SEEK_SET);
-    if (coff_file_size < sizeof(chdr) + sizeof(ohdr) + sizeof(scns)) {
-        fprintf(stderr, "bad COFF payload, size %lx off %lx\n",
-                coff_file_size, coffset);
-        exit(EXIT_FAILURE);
-    }
-    read(ifile, &chdr, sizeof(chdr)); /* get the COFF header */
-    if (chdr.f_opthdr != sizeof(ohdr)) {
+    rc = read(ifile, &chdr, sizeof(chdr)); /* get the COFF header */
+    if (rc != sizeof(chdr) || chdr.f_opthdr != sizeof(ohdr)) {
         fprintf(stderr, "bad COFF header\n");
         exit(EXIT_FAILURE);
     }
-    read(ifile, &ohdr, sizeof(ohdr)); /* get the COFF opt header */
-    read(ifile, scns, sizeof(scns[0]) * SCT_MAX);
+    rc = read(ifile, &ohdr, sizeof(ohdr)); /* get the COFF opt header */
+    if (rc != sizeof(ohdr)) {
+        fprintf(stderr, "bad COFF opt header\n");
+        exit(EXIT_FAILURE);
+    }
+    rc = read(ifile, scns, sizeof(scns[0]) * SCT_MAX);
+    if (rc != sizeof(scns[0]) * SCT_MAX) {
+        fprintf(stderr, "failed to read section headers\n");
+        exit(EXIT_FAILURE);
+    }
 #if STUB_DEBUG
     for (i = 0; i < SCT_MAX; i++) {
         struct scn_header *h = &scns[i];
@@ -450,7 +450,15 @@ int main(int argc, char *argv[], char *envp[])
     read_section(ifile, coffset, SCT_TEXT);
     read_section(ifile, coffset, SCT_DATA);
     farmemset_bss();
-    close(ifile);
+
+    stubinfo.self_fd = ifile;
+    stubinfo.payload_offs = lseek(ifile, 0, SEEK_CUR);
+    stubinfo.payload_size = lseek(ifile, 0, SEEK_END) - stubinfo.payload_offs;
+    if (stubinfo.payload_size > 0) {
+        lseek(ifile, stubinfo.payload_offs, SEEK_SET);
+        stub_debug("Found payload of size %li at %lx\n",
+                stubinfo.payload_size, stubinfo.payload_offs);
+    }
 
     stub_debug("Jump to entry...\n");
     asm volatile(
