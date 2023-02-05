@@ -459,6 +459,7 @@ int main(int argc, char *argv[], char *envp[])
         stub_debug("Found payload of size %li at %lx\n",
                 stubinfo.payload_size, stubinfo.payload_offs);
     }
+    stubinfo.stubinfo_ver = 2;
 
     stub_debug("Jump to entry...\n");
     asm volatile(
