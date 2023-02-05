@@ -11,7 +11,7 @@ all: $(PROG)
 
 .INTERMEDIATE: stub.exe
 
-stub.exe: stub.c
+stub.exe: stub.c stubinfo.h
 	$(CC) $(CFLAGS) $< -li86 -o $@
 
 stub.o: stub.exe
