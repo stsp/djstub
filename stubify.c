@@ -205,51 +205,14 @@ void coff2exe(char *fname)
     write(ofile, _binary_stub_exe_start,
         _binary_stub_exe_end-_binary_stub_exe_start);
 
-#ifdef __DJGPP__
-  /* if 0 bytes are read (or an error occurs, the loop will be broken from */
-  while (1) {
-    __dpmi_regs r;
-    int wb;
-    /* bypass the normal read routine to avoid the unnecessary copying of the
-     * file contents into extended memory (the data is not actually being
-     * used, only copied from one file to another, and so easy access from gcc
-     * compiled code is not needed).
-     */
-    r.x.ax = 0x3f00; /* dos read from file handle function */
-    r.x.bx = ifile;
-    r.x.cx = __tb_size; /* number of bytes to read */
-    r.x.dx = __tb & 15; /* transfer buffer offset */
-    r.x.ds = __tb / 16; /* transfer buffer segment */
-    __dpmi_int(0x21, &r);
-    if (r.x.flags & 1)
-      errno = __doserr_to_errno(r.x.ax);
-    if ((rbytes=(r.x.flags & 1) ? -1 : r.x.ax) <= 0)
-      break;
-#else
   while ((rbytes=read(ifile, buf, 4096)) > 0)
   {
     int wb;
-#endif
 
     if (drop_last_four_bytes && rbytes < 4096)
       rbytes -= 4;
 
-#ifdef __DJGPP__
-    /* bypass the normal write routine to avoid the unnecessary copying of the
-     * file contents from extended memory.
-     */
-    r.x.ax = 0x4000; /* dos write to file handle function */
-    r.x.bx = ofile;
-    r.x.cx = rbytes; /* number of bytes to write */
-    r.x.dx = __tb & 15; /* transfer buffer offset */
-    r.x.ds = __tb / 16; /* transfer buffer segment */
-    __dpmi_int(0x21, &r);
-    wb = (r.x.flags & 1) ? -1 : r.x.ax;
-    if (r.x.flags & 1)
-      errno = __doserr_to_errno(r.x.ax);
-#else
     wb = write(ofile, buf, rbytes);
-#endif
     if (wb < 0)
     {
       perror(ofilename);
@@ -274,11 +237,7 @@ void coff2exe(char *fname)
   if (used_temp)
   {
     unlink(ofilename);
-#ifdef __DJGPP__
-    if (_rename(ifilename, ofilename))
-#else
     if (rename(ifilename, ofilename))
-#endif
     {
       fprintf(stderr, "rename of %s to %s failed.\n", ifilename, ofilename);
       perror("The error was");
