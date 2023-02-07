@@ -50,7 +50,7 @@ typedef struct
 } DPMI_FP;
 
 struct coff_header {
-    unsigned short 	f_magic;	/* Magic number */	
+    unsigned short 	f_magic;	/* Magic number */
     unsigned short 	f_nscns;	/* Number of Sections */
     int32_t 		f_timdat;	/* Time & date stamp */
     int32_t 		f_symptr;	/* File pointer to Symbol Table */
