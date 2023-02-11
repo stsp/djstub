@@ -264,8 +264,10 @@ int main(int argc, char *argv[], char *envp[])
 {
     int ifile;
     off_t coffset = 0;
+    uint32_t noffset = 0;
     int rc, i;
-    char buf[16];
+#define BUF_SIZE 0x40
+    char buf[BUF_SIZE];
     struct coff_header chdr;
     struct opt_header ohdr;
     int done = 0;
@@ -292,26 +294,20 @@ int main(int argc, char *argv[], char *envp[])
         int cnt = 0;
 
         stub_debug("Expecting header at %lx\n", coffset);
-        rc = read(ifile, buf, 6);
-        if (rc != 6) {
+        rc = read(ifile, buf, BUF_SIZE);
+        if (rc != BUF_SIZE) {
             perror("fread()");
             exit(EXIT_FAILURE);
         }
-        if (buf[0] == 'M' && buf[1] == 'Z') {
-            long blocks = (unsigned char)buf[4] + (unsigned char)buf[5] * 256;
-            long partial = (unsigned char)buf[2] + (unsigned char)buf[3] * 256;
-
-            cnt++;
-            stub_debug("Found exe header %i at %lx\n", cnt, coffset);
-            coffset += blocks * 512;
-            if (partial)
-                coffset += partial - 512;
-        } else if (buf[0] == 0x33 && buf[1] == 0x50) { /* CauseWay 3P */
+        if (buf[0] == 'M' && buf[1] == 'Z' && buf[8] == 4 /* lfanew */) {
             uint32_t offs;
             cnt++;
-            stub_debug("Found CW header %i at %lx\n", cnt, coffset);
-            memcpy(&offs, &buf[2], sizeof(offs));
-            coffset += offs;
+            stub_debug("Found exe header %i at %lx\n", cnt, coffset);
+            memcpy(&offs, &buf[0x3c], sizeof(offs));
+            coffset = offs;
+            memcpy(&noffset, &buf[0x1c], sizeof(noffset));
+            if (noffset)
+                noffset += offs;
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
         } else {
@@ -452,10 +448,10 @@ int main(int argc, char *argv[], char *envp[])
     farmemset_bss();
 
     stubinfo.self_fd = ifile;
-    stubinfo.payload_offs = lseek(ifile, 0, SEEK_CUR);
-    stubinfo.payload_size = lseek(ifile, 0, SEEK_END) - stubinfo.payload_offs;
+    stubinfo.payload_offs = noffset;
+    stubinfo.payload_size = noffset ? lseek(ifile, 0, SEEK_END) - noffset : 0;
+    lseek(ifile, noffset, SEEK_SET);
     if (stubinfo.payload_size > 0) {
-        lseek(ifile, stubinfo.payload_offs, SEEK_SET);
         stub_debug("Found payload of size %li at %lx\n",
                 stubinfo.payload_size, stubinfo.payload_offs);
     }

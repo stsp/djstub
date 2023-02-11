@@ -12,7 +12,9 @@ all: $(PROG)
 .INTERMEDIATE: stub.exe
 
 stub.exe: stub.c stubinfo.h
-	$(CC) $(CFLAGS) $< -li86 -o $@
+	$(CC) $(CFLAGS) $< -li86 -o _$@
+	lfanew -o $@ _$@
+	rm _$@
 
 stub.o: stub.exe
 	$(OBJCOPY) -I binary -O $(O_BDFARCH) \

@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdint.h>
 #ifdef __DJGPP__
 #include <io.h>
 #include <libc/dosio.h>
@@ -99,7 +100,7 @@ void coff2exe(char *fname)
   long coffset=0;
   unsigned char filehdr_buf[20];
   int max_file_size = 0;
-  int coff_file_size = 0;
+  uint32_t coff_file_size = 0;
   int drop_last_four_bytes = 0;
 
   strcpy(ifilename, fname);
@@ -135,18 +136,24 @@ void coff2exe(char *fname)
   while (1)
   {
     lseek(ifile, coffset, SEEK_SET);
-    read(ifile, buf, 6);
+    read(ifile, buf, 0x40);
     if (buf[0] == 'M' && buf[1] == 'Z') /* stubbed already, skip stub */
     {
-      int blocks = (unsigned char)buf[4] + (unsigned char)buf[5] * 256;
-      int partial = (unsigned char)buf[2] + (unsigned char)buf[3] * 256;
-      coffset += blocks * 512;
-      if (partial)
-	coffset += partial - 512;
-    }
-    else if (buf[0] == 0x33 && buf[1] == 0x50) /* CauseWay 3P */
-    {
-      coffset += *(unsigned int *)&buf[2];
+      if (buf[8] == 4)  // lfanew
+      {
+        uint32_t offs;
+        memcpy(&offs, &buf[0x3c], sizeof(offs));
+        coffset = offs;
+        memcpy(&coff_file_size, &buf[0x1c], sizeof(coff_file_size));
+      }
+      else
+      {
+        int blocks = (unsigned char)buf[4] + (unsigned char)buf[5] * 256;
+        int partial = (unsigned char)buf[2] + (unsigned char)buf[3] * 256;
+        coffset += blocks * 512;
+        if (partial)
+          coffset += partial - 512;
+      }
     }
     else if (buf[0] == 0x4c && buf[1] == 0x01) /* it's a COFF */
     {
@@ -159,8 +166,12 @@ void coff2exe(char *fname)
     }
   }
 
-  coff_file_size = lseek(ifile, 0, SEEK_END) - coffset;
+  if (!coff_file_size)
+    coff_file_size = lseek(ifile, 0, SEEK_END) - coffset;
   lseek(ifile, coffset, SEEK_SET);
+  /* store coff size in overlay info */
+  memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
+        sizeof(coff_file_size));
 
   read(ifile, filehdr_buf, 20); /* get the COFF header */
   lseek(ifile, get16(filehdr_buf+16), SEEK_CUR); /* skip optional header */
@@ -205,14 +216,18 @@ void coff2exe(char *fname)
     write(ofile, _binary_stub_exe_start,
         _binary_stub_exe_end-_binary_stub_exe_start);
 
-  while ((rbytes=read(ifile, buf, 4096)) > 0)
+  while (coff_file_size > 0 && (rbytes=read(ifile, buf, 4096)) > 0)
   {
     int wb;
 
     if (drop_last_four_bytes && rbytes < 4096)
       rbytes -= 4;
+    if (rmstub && rbytes > coff_file_size)
+      rbytes = coff_file_size;
 
     wb = write(ofile, buf, rbytes);
+    if (rmstub)
+      coff_file_size -= rbytes;
     if (wb < 0)
     {
       perror(ofilename);
