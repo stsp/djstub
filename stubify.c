@@ -39,24 +39,25 @@ extern char _binary_stub_exe_size[];
 extern char _binary_stub_exe_start[];
 
 #define v_printf if(verbose)printf
-int verbose=0;
-int rmstub=0;
-char *generate=NULL;
-char *stubparams=NULL;
+static int verbose;
+static int rmstub;
+static char *generate;
+static char *overlay;
+static char *stubparams;
 
-unsigned long
+static unsigned long
 get32(unsigned char *ptr)
 {
   return ptr[0] | (ptr[1]<<8) | (ptr[2]<<16) | (ptr[3]<<24);
 }
 
-unsigned short
+static unsigned short
 get16(unsigned char *ptr)
 {
   return ptr[0] | (ptr[1]<<8);
 }
 
-void stubedit(const char *filename)
+static void stubedit(const char *filename)
 {
   if( stubparams )
   {
@@ -88,20 +89,24 @@ void stubedit(const char *filename)
   }
 }
 
-void coff2exe(char *fname)
+static void coff2exe(char *fname)
 {
   char ifilename[256];
   char ofilename[256];
   int ifile;
+  int iovfile = -1;
   int ofile;
   char *ofname, *ofext;
   char buf[4096];
   int rbytes, used_temp = 0, i, n;
   long coffset=0;
   unsigned char filehdr_buf[20];
+  unsigned char mzhdr_buf[0x40];
   int max_file_size = 0;
   uint32_t coff_file_size = 0;
   int drop_last_four_bytes = 0;
+  int rmoverlay = 0;
+  int can_copy_ovl = 0;
 
   strcpy(ifilename, fname);
   strcpy(ofilename, fname);
@@ -133,6 +138,17 @@ void coff2exe(char *fname)
     perror(fname);
     return;
   }
+  if (overlay)
+  {
+    iovfile = open(overlay, O_RDONLY | O_BINARY);
+    if (iovfile < 0)
+    {
+      close(ifile);
+      perror(overlay);
+      return;
+    }
+  }
+
   while (1)
   {
     lseek(ifile, coffset, SEEK_SET);
@@ -145,6 +161,10 @@ void coff2exe(char *fname)
         memcpy(&offs, &buf[0x3c], sizeof(offs));
         coffset = offs;
         memcpy(&coff_file_size, &buf[0x1c], sizeof(coff_file_size));
+        memcpy(mzhdr_buf, buf, sizeof(mzhdr_buf));
+        can_copy_ovl++;
+        if (rmstub || overlay)
+          rmoverlay++;
       }
       else
       {
@@ -169,9 +189,21 @@ void coff2exe(char *fname)
   if (!coff_file_size)
     coff_file_size = lseek(ifile, 0, SEEK_END) - coffset;
   lseek(ifile, coffset, SEEK_SET);
-  /* store coff size in overlay info */
-  memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
-        sizeof(coff_file_size));
+  if (overlay) {
+    struct stat sb;
+    /* store overlay sizes in overlay info */
+    memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
+          sizeof(coff_file_size));
+    fstat(iovfile, &sb);
+    memcpy(_binary_stub_exe_start + 0x20, &sb.st_size, 4);
+  } else if (can_copy_ovl) {
+    /* copy entire overlay info except 0x3c */
+    memcpy(_binary_stub_exe_start + 0x1c, mzhdr_buf + 0x1c, 0x3c - 0x1c);
+  } else {
+    /* assume there is just 1 overlay */
+    memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
+          sizeof(coff_file_size));
+  }
 
   read(ifile, filehdr_buf, 20); /* get the COFF header */
   lseek(ifile, get16(filehdr_buf+16), SEEK_CUR); /* skip optional header */
@@ -222,31 +254,42 @@ void coff2exe(char *fname)
 
     if (drop_last_four_bytes && rbytes < 4096)
       rbytes -= 4;
-    if (rmstub && rbytes > coff_file_size)
+    if (rmoverlay && rbytes > coff_file_size)
       rbytes = coff_file_size;
 
     wb = write(ofile, buf, rbytes);
-    if (rmstub)
+    if (rmoverlay)
       coff_file_size -= rbytes;
-    if (wb < 0)
+    if (wb != rbytes)
     {
       perror(ofilename);
       close(ifile);
-      close(ofile);
-      unlink(ofilename);
-      exit(1);
-    }
-    if (wb < rbytes)
-    {
-      fprintf(stderr, "%s: disk full\n", ofilename);
-      close(ifile);
+      close(iovfile);
       close(ofile);
       unlink(ofilename);
       exit(1);
     }
   }
-
   close(ifile);
+
+  if (overlay)
+  {
+    while ((rbytes = read(iovfile, buf, 4096)) > 0)
+    {
+      int wb;
+
+      wb = write(ofile, buf, rbytes);
+      if (wb != rbytes)
+      {
+        perror(ofilename);
+        close(iovfile);
+        close(ofile);
+        unlink(ofilename);
+        exit(1);
+      }
+    }
+    close(iovfile);
+  }
   close(ofile);
 
   if (used_temp)
@@ -262,7 +305,7 @@ void coff2exe(char *fname)
   stubedit(ofilename);
 }
 
-void print_help(void)
+static void print_help(void)
 {
   fprintf(stderr, "Usage: stubify [-v] [-g] [%sparam[,param...] <program>\n"
 	  "<program> may be COFF or stubbed .exe, and may be COFF with .exe extension.\n"
@@ -270,6 +313,7 @@ void print_help(void)
 	  "-v -> verbose\n"
 	  "-r -> remove stub\n"
 	  "-g -> generate a stub\n"
+	  "-l <file_name> -> add <file_name> file as an overlay\n"
 	  "%sparam[,param...] -> pass param[ param...] to stubedit (commas are\n"
 	  "      converted into spaces); see stubedit documentation for what param can be\n"
 	  "\nThis program is NOT shareware or public domain.  It is copyrighted.\n"
@@ -305,6 +349,17 @@ int main(int argc, char **argv)
 	return 1;
       }
       generate = argv[2];
+      argv += 2;
+      argc -= 2;
+    }
+    else if (strcmp(argv[1], "-l")==0)
+    {
+      if (argc < 2)
+      {
+	fprintf(stderr, "-l option requires file name\n");
+	return 1;
+      }
+      overlay = argv[2];
       argv += 2;
       argc -= 2;
     }

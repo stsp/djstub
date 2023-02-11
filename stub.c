@@ -265,6 +265,7 @@ int main(int argc, char *argv[], char *envp[])
     int ifile;
     off_t coffset = 0;
     uint32_t noffset = 0;
+    uint32_t nsize = 0;
     int rc, i;
 #define BUF_SIZE 0x40
     char buf[BUF_SIZE];
@@ -308,6 +309,7 @@ int main(int argc, char *argv[], char *envp[])
             memcpy(&noffset, &buf[0x1c], sizeof(noffset));
             if (noffset)
                 noffset += offs;
+            memcpy(&nsize, &buf[0x20], sizeof(nsize));
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
         } else {
@@ -449,12 +451,10 @@ int main(int argc, char *argv[], char *envp[])
 
     stubinfo.self_fd = ifile;
     stubinfo.payload_offs = noffset;
-    stubinfo.payload_size = noffset ? lseek(ifile, 0, SEEK_END) - noffset : 0;
+    stubinfo.payload_size = nsize;
     lseek(ifile, noffset, SEEK_SET);
-    if (stubinfo.payload_size > 0) {
-        stub_debug("Found payload of size %li at %lx\n",
-                stubinfo.payload_size, stubinfo.payload_offs);
-    }
+    if (nsize > 0)
+        stub_debug("Found payload of size %li at %lx\n", nsize, noffset);
     stubinfo.stubinfo_ver = 2;
 
     stub_debug("Jump to entry...\n");
