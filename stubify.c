@@ -281,8 +281,6 @@ static void print_help(void)
 
 int main(int argc, char **argv)
 {
-  int i;
-
   while (argc > 1 && argv[1][0] == '-')
   {
     if (strcmp(argv[1], "-v")==0)
@@ -366,8 +364,7 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    for (i=1; i<argc; i++)
-      coff2exe(argv[i]);
+    coff2exe(argv[argc - 1]);
   }
 
   return 0;
