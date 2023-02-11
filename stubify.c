@@ -31,9 +31,6 @@
 #define SEEK_SET 0
 #endif
 
-/* Option string that marks what to send to stubedit (stub options). */
-#define STUB_OPTIONS "-stubparams="
-
 extern char _binary_stub_exe_end[];
 extern char _binary_stub_exe_size[];
 extern char _binary_stub_exe_start[];
@@ -43,7 +40,6 @@ static int verbose;
 static int rmstub;
 static char *generate;
 static char *overlay;
-static char *stubparams;
 
 static unsigned long
 get32(unsigned char *ptr)
@@ -55,38 +51,6 @@ static unsigned short
 get16(unsigned char *ptr)
 {
   return ptr[0] | (ptr[1]<<8);
-}
-
-static void stubedit(const char *filename)
-{
-  if( stubparams )
-  {
-    int i;
-    char *stubedit_str = malloc( sizeof("stubedit ")-1
-			   +strlen(filename)
-			   +1 /* space */
-			   +strlen(stubparams)
-			   +1 ); /* For NULL. */
-    if( stubedit_str )
-    {
-      sprintf(stubedit_str, "stubedit %s %s",
-	      filename, stubparams);
-      v_printf("Running '%s'\n", stubedit_str);
-      i = system(stubedit_str);
-      if( i )
-      {
-	fprintf(stderr, "%s: call to stubedit failed"
-		"(stubedit exit status was %d)\n", filename, i);
-      }
-
-      free( stubedit_str );
-    }
-    else
-    {
-      fprintf(stderr, "%s: failed using %s (out of memory)\n", filename, 
-	      STUB_OPTIONS);
-    }
-  }
 }
 
 static void coff2exe(char *fname)
@@ -301,26 +265,18 @@ static void coff2exe(char *fname)
       perror("The error was");
     }
   }
-
-  stubedit(ofilename);
 }
 
 static void print_help(void)
 {
-  fprintf(stderr, "Usage: stubify [-v] [-g] [%sparam[,param...] <program>\n"
+  fprintf(stderr, "Usage: stubify [-v] [-g] [-l <overlay>] <program>\n"
 	  "<program> may be COFF or stubbed .exe, and may be COFF with .exe extension.\n"
 	  "Resulting file will have .exe\n"
 	  "-v -> verbose\n"
 	  "-r -> remove stub\n"
 	  "-g -> generate a stub\n"
 	  "-l <file_name> -> add <file_name> file as an overlay\n"
-	  "%sparam[,param...] -> pass param[ param...] to stubedit (commas are\n"
-	  "      converted into spaces); see stubedit documentation for what param can be\n"
-	  "\nThis program is NOT shareware or public domain.  It is copyrighted.\n"
-	  "It is redistributable but only as part of a complete package.  If you\n"
-	  "have a copy of this program, the place that you got it from is\n"
-	  "responsible for making sure you are able to get its sources as well.\n",
-	  STUB_OPTIONS, STUB_OPTIONS );
+  );
 }
 
 int main(int argc, char **argv)
@@ -363,28 +319,6 @@ int main(int argc, char **argv)
       argv += 2;
       argc -= 2;
     }
-    else if (! strncmp(argv[1], STUB_OPTIONS, sizeof(STUB_OPTIONS)-1))
-    {
-      int j = 0;
-      i = sizeof(STUB_OPTIONS)-1;
-      stubparams = malloc( strlen(&(argv[1][i])) + 1 );
-      while (argv[1][i])
-      {
-	if (argv[1][i] == ',')
-	{
-	  stubparams[j] = ' ';
-	}
-	else
-	{
-	  stubparams[j] = argv[1][i];
-	}
-	i++;
-	j++;
-      }
-      stubparams[j] = 0;
-      argv++;
-      argc--;
-    }
     else
     {
       fprintf(stderr, "Unknow option: %s\n", argv[1]);
@@ -393,7 +327,7 @@ int main(int argc, char **argv)
     }
   }
 
-  v_printf("stubify for djgpp V2.X executables, Copyright (C) 1995-2003 DJ Delorie\n");
+  v_printf("stubify for dj64 executables, copyright (C) 2023 stsp\n");
   if (generate)
   {
     char ofilename[256], *ofname, *ofext=0;
@@ -423,7 +357,6 @@ int main(int argc, char **argv)
     write(ofile, _binary_stub_exe_start,
         _binary_stub_exe_end-_binary_stub_exe_start);
     close(ofile);
-    stubedit(ofilename);
   }
   else
   {
