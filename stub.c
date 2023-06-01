@@ -320,8 +320,13 @@ int main(int argc, char *argv[], char *envp[])
     }
 
     rc = read(ifile, &chdr, sizeof(chdr)); /* get the COFF header */
-    if (rc != sizeof(chdr) || chdr.f_opthdr != sizeof(ohdr)) {
+    if (rc != sizeof(chdr)) {
         fprintf(stderr, "bad COFF header\n");
+        exit(EXIT_FAILURE);
+    }
+    if (chdr.f_opthdr < sizeof(ohdr)) {
+        fprintf(stderr, "opt header size mismatch: %i %zi\n",
+                chdr.f_opthdr, sizeof(ohdr));
         exit(EXIT_FAILURE);
     }
     rc = read(ifile, &ohdr, sizeof(ohdr)); /* get the COFF opt header */
@@ -329,6 +334,8 @@ int main(int argc, char *argv[], char *envp[])
         fprintf(stderr, "bad COFF opt header\n");
         exit(EXIT_FAILURE);
     }
+    if (chdr.f_opthdr > sizeof(ohdr))
+        lseek(ifile, chdr.f_opthdr - sizeof(ohdr), SEEK_CUR);
     rc = read(ifile, scns, sizeof(scns[0]) * SCT_MAX);
     if (rc != sizeof(scns[0]) * SCT_MAX) {
         fprintf(stderr, "failed to read section headers\n");
