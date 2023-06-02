@@ -3,7 +3,7 @@ CFLAGS = -mcmodel=small -mdosx32 -Os -Wall
 LDFLAGS = -mcmodel=small -mdosx32
 OBJCOPY = objcopy
 O_BDFARCH=$(shell $(OBJCOPY) --info | head -n 2 | tail -n 1)
-PROG = dosemu2-stubify
+PROG = djstubify
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 
@@ -20,7 +20,7 @@ stub.o: stub.exe
 	$(OBJCOPY) -I binary -O $(O_BDFARCH) \
 		--add-section .note.GNU-stack=/dev/null $< $@
 
-dosemu2-stubify: stubify.o stub.o
+$(PROG): stubify.o stub.o
 	cc -o $@ $^
 
 stubify.o: stubify.c
