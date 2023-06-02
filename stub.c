@@ -1,5 +1,5 @@
 /*
- *  go32-compatible COFF stub.
+ *  go32-compatible COFF and PE32 stub. TODO: ELF support.
  *  Copyright (C) 2022,  stsp <stsp@users.sourceforge.net>
  *
  *  This program is free software: you can redistribute it and/or modify
