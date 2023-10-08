@@ -210,10 +210,9 @@ static void read_section(int ifile, long coffset, int sc)
     }
 }
 
-static void farmemset_bss(void)
+static void farmemset(uint32_t vaddr, uint16_t val, uint32_t size)
 {
     char __far *p = client_memory;
-    uint32_t size = scns[SCT_BSS].s_size;
     unsigned dummy;
     assert(!(size & 1)); // speed up memcpy
     asm volatile(
@@ -230,8 +229,8 @@ static void farmemset_bss(void)
           "xor %%edi, %%edi\n"
           ".arch i286\n"
         : "=c"(dummy), "=D"(dummy)
-        : "a"(0), "d"(FP_SEG(p)), "D"(FP_OFF(p)),
-          [size]"m"(size), [offs]"m"(scns[SCT_BSS].s_vaddr)
+        : "a"(val), "d"(FP_SEG(p)), "D"(FP_OFF(p)),
+          [size]"m"(size), [offs]"m"(vaddr)
         : "memory");
 }
 
@@ -454,7 +453,7 @@ int main(int argc, char *argv[], char *envp[])
 
     read_section(ifile, coffset, SCT_TEXT);
     read_section(ifile, coffset, SCT_DATA);
-    farmemset_bss();
+    farmemset(scns[SCT_BSS].s_vaddr, 0, scns[SCT_BSS].s_size);
 
     stubinfo.self_fd = ifile;
     stubinfo.payload_offs = noffset;
