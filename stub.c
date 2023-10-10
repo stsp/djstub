@@ -26,15 +26,8 @@
 #include <dpmi.h>
 #include <assert.h>
 #include "stubinfo.h"
-
-#ifndef PAGE_SIZE
-#define PAGE_SIZE 4096
-#endif
-#ifndef PAGE_MASK
-#define PAGE_MASK	(~(PAGE_SIZE-1))
-#endif
-/* to align the pointer to the (next) page boundary */
-#define PAGE_ALIGN(addr)	(((addr)+PAGE_SIZE-1)&PAGE_MASK)
+#include "coff.h"
+#include "util.h"
 
 #define STUB_DEBUG 0
 #if STUB_DEBUG
@@ -49,43 +42,6 @@ typedef struct
     unsigned short selector;
 } DPMI_FP;
 
-struct coff_header {
-    unsigned short 	f_magic;	/* Magic number */
-    unsigned short 	f_nscns;	/* Number of Sections */
-    int32_t 		f_timdat;	/* Time & date stamp */
-    int32_t 		f_symptr;	/* File pointer to Symbol Table */
-    int32_t 		f_nsyms;	/* Number of Symbols */
-    unsigned short 	f_opthdr;	/* sizeof(Optional Header) */
-    unsigned short 	f_flags;	/* Flags */
-};
-
-struct opt_header {
-    unsigned short 	magic;          /* Magic Number                    */
-    unsigned short 	vstamp;         /* Version stamp                   */
-    uint32_t 		tsize;          /* Text size in bytes              */
-    uint32_t 		dsize;          /* Initialised data size           */
-    uint32_t 		bsize;          /* Uninitialised data size         */
-    uint32_t 		entry;          /* Entry point                     */
-    uint32_t 		text_start;     /* Base of Text used for this file */
-    uint32_t 		data_start;     /* Base of Data used for this file */
-};
-
-struct scn_header {
-    char		s_name[8];	/* Section Name */
-    int32_t		s_paddr;	/* Physical Address */
-    int32_t		s_vaddr;	/* Virtual Address */
-    int32_t		s_size;		/* Section Size in Bytes */
-    int32_t		s_scnptr;	/* File offset to the Section data */
-    int32_t		s_relptr;	/* File offset to the Relocation table for this Section */
-    int32_t		s_lnnoptr;	/* File offset to the Line Number table for this Section */
-    unsigned short	s_nreloc;	/* Number of Relocation table entries */
-    unsigned short	s_nlnno;	/* Number of Line Number table entries */
-    int32_t		s_flags;	/* Flags for this section */
-};
-
-enum { SCT_TEXT, SCT_DATA, SCT_BSS, SCT_MAX };
-
-static struct scn_header scns[SCT_MAX];
 static unsigned short psp_sel;
 static char __far *client_memory;
 static DPMI_FP clnt_entry;
@@ -150,89 +106,6 @@ static void dpmi_init(void)
     }
 }
 
-static void farmemcpy(char __far *ptr, unsigned long offset, char *src,
-    unsigned long length)
-{
-    unsigned dummy;
-    assert(!(length & 1)); // speed up memcpy
-    asm volatile(
-          ".arch i386\n"
-          "push %%es\n"
-          "mov %%dx, %%es\n"
-          "mov %[size], %%ecx\n"
-          "movzwl %%di, %%edi\n"
-          "add %[offs], %%edi\n"
-          "shr $1, %%ecx\n"
-          "addr32 rep movsw\n"
-          "pop %%es\n"
-          "xor %%ecx, %%ecx\n"
-          "xor %%edi, %%edi\n"
-          ".arch i286\n"
-        : "=c"(dummy), "=D"(dummy)
-        : "a"(0), "d"(FP_SEG(ptr)), "D"(FP_OFF(ptr)), "S"(src),
-          [size]"m"(length), [offs]"m"(offset)
-        : "memory");
-}
-
-static long _long_read(int file, char __far *buf, unsigned long offset,
-    unsigned long size)
-{
-    char tmp[PAGE_SIZE];
-    unsigned long done = 0;
-
-#define min(a, b) ((a) < (b) ? (a) : (b))
-    while (size) {
-        unsigned todo = min(size, sizeof(tmp));
-        size_t rd = read(file, tmp, todo);
-        if (rd) {
-            farmemcpy(buf, offset + done, tmp, rd);
-            done += rd;
-            size -= rd;
-        }
-        if (rd < todo)
-            break;
-    }
-    return done;
-}
-
-static void read_section(int ifile, long coffset, int sc)
-{
-    long bytes;
-    lseek(ifile, coffset + scns[sc].s_scnptr, SEEK_SET);
-    bytes = _long_read(ifile, client_memory, scns[sc].s_vaddr,
-            scns[sc].s_size);
-    stub_debug("read returned %li\n", bytes);
-    if (bytes != scns[sc].s_size) {
-        fprintf(stderr, "err reading %li bytes, got %li\n",
-                scns[sc].s_size, bytes);
-        _exit(EXIT_FAILURE);
-    }
-}
-
-static void farmemset(char __far *ptr, uint32_t vaddr, uint16_t val,
-                      uint32_t size)
-{
-    unsigned dummy;
-    assert(!(size & 1)); // speed up memcpy
-    asm volatile(
-          ".arch i386\n"
-          "push %%es\n"
-          "mov %%dx, %%es\n"
-          "mov %[size], %%ecx\n"
-          "movzwl %%di, %%edi\n"
-          "add %[offs], %%edi\n"
-          "shr $1, %%ecx\n"
-          "addr32 rep stosw\n"
-          "pop %%es\n"
-          "xor %%ecx, %%ecx\n"
-          "xor %%edi, %%edi\n"
-          ".arch i286\n"
-        : "=c"(dummy), "=D"(dummy)
-        : "a"(val), "d"(FP_SEG(ptr)), "D"(FP_OFF(ptr)),
-          [size]"m"(size), [offs]"m"(vaddr)
-        : "memory");
-}
-
 static const char *_basename(const char *name)
 {
     const char *p;
@@ -267,9 +140,8 @@ int main(int argc, char *argv[], char *envp[])
     int rc, i;
 #define BUF_SIZE 0x40
     char buf[BUF_SIZE];
-    struct coff_header chdr;
-    struct opt_header ohdr;
     int done = 0;
+    long va_size;
     unsigned short clnt_ds;
     unsigned short stubinfo_fs;
     unsigned short mem_hi, mem_lo, si, di;
@@ -317,35 +189,10 @@ int main(int argc, char *argv[], char *envp[])
         lseek(ifile, coffset, SEEK_SET);
     }
 
-    rc = read(ifile, &chdr, sizeof(chdr)); /* get the COFF header */
-    if (rc != sizeof(chdr)) {
-        fprintf(stderr, "bad COFF header\n");
+    va_size = read_coff_headers(ifile, &clnt_entry.offset32);
+    if (va_size == -1)
         exit(EXIT_FAILURE);
-    }
-    if (chdr.f_opthdr < sizeof(ohdr)) {
-        fprintf(stderr, "opt header size mismatch: %i %zi\n",
-                chdr.f_opthdr, sizeof(ohdr));
-        exit(EXIT_FAILURE);
-    }
-    rc = read(ifile, &ohdr, sizeof(ohdr)); /* get the COFF opt header */
-    if (rc != sizeof(ohdr)) {
-        fprintf(stderr, "bad COFF opt header\n");
-        exit(EXIT_FAILURE);
-    }
-    if (chdr.f_opthdr > sizeof(ohdr))
-        lseek(ifile, chdr.f_opthdr - sizeof(ohdr), SEEK_CUR);
-    rc = read(ifile, scns, sizeof(scns[0]) * SCT_MAX);
-    if (rc != sizeof(scns[0]) * SCT_MAX) {
-        fprintf(stderr, "failed to read section headers\n");
-        exit(EXIT_FAILURE);
-    }
-#if STUB_DEBUG
-    for (i = 0; i < SCT_MAX; i++) {
-        struct scn_header *h = &scns[i];
-        stub_debug("Section %s pa %lx va %lx size %lx foffs %lx\n",
-                h->s_name, h->s_paddr, h->s_vaddr, h->s_size, h->s_scnptr);
-    }
-#endif
+
     strncpy(stubinfo.magic, "go32stub,v3,stsp", sizeof(stubinfo.magic));
     stubinfo.size = sizeof(stubinfo);
     i = 0;
@@ -365,8 +212,7 @@ int main(int argc, char *argv[], char *envp[])
     strncpy(stubinfo.basename, _fname(argv0), sizeof(stubinfo.basename));
     strncpy(stubinfo.dpmi_server, "CWSDPMI.EXE", sizeof(stubinfo.dpmi_server));
 #define max(a, b) ((a) > (b) ? (a) : (b))
-    stubinfo.initial_size = max(scns[SCT_BSS].s_vaddr + scns[SCT_BSS].s_size,
-        0x10000);
+    stubinfo.initial_size = max(va_size, 0x10000);
     stubinfo.psp_selector = psp_sel;
     /* DJGPP relies on ds_selector, cs_selector and ds_segment all mapping
      * the same real-mode memory block. */
@@ -387,7 +233,6 @@ int main(int argc, char *argv[], char *envp[])
         : "cc");
 
     clnt_entry.selector = _DPMIAllocateLDTDescriptors(1);
-    clnt_entry.offset32 = ohdr.entry;
     clnt_ds = _DPMIAllocateLDTDescriptors(1);
     alloc_size = PAGE_ALIGN(stubinfo.initial_size);
     /* allocate mem */
@@ -450,9 +295,7 @@ int main(int argc, char *argv[], char *envp[])
         : "a"(7), "b"(stubinfo_fs), "c"(mem_hi), "d"(mem_lo)
         : "cc");
 
-    read_section(ifile, coffset, SCT_TEXT);
-    read_section(ifile, coffset, SCT_DATA);
-    farmemset(client_memory, scns[SCT_BSS].s_vaddr, 0, scns[SCT_BSS].s_size);
+    read_coff_sections(client_memory, ifile, coffset);
 
     stubinfo.self_fd = ifile;
     stubinfo.payload_offs = noffset;
