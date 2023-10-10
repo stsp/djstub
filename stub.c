@@ -153,7 +153,6 @@ static void dpmi_init(void)
 static void farmemcpy(char __far *ptr, unsigned long offset, char *src,
     unsigned long length)
 {
-    char __far *p = client_memory;
     unsigned dummy;
     assert(!(length & 1)); // speed up memcpy
     asm volatile(
@@ -170,7 +169,7 @@ static void farmemcpy(char __far *ptr, unsigned long offset, char *src,
           "xor %%edi, %%edi\n"
           ".arch i286\n"
         : "=c"(dummy), "=D"(dummy)
-        : "a"(0), "d"(FP_SEG(p)), "D"(FP_OFF(p)), "S"(src),
+        : "a"(0), "d"(FP_SEG(ptr)), "D"(FP_OFF(ptr)), "S"(src),
           [size]"m"(length), [offs]"m"(offset)
         : "memory");
 }
@@ -210,9 +209,9 @@ static void read_section(int ifile, long coffset, int sc)
     }
 }
 
-static void farmemset(uint32_t vaddr, uint16_t val, uint32_t size)
+static void farmemset(char __far *ptr, uint32_t vaddr, uint16_t val,
+                      uint32_t size)
 {
-    char __far *p = client_memory;
     unsigned dummy;
     assert(!(size & 1)); // speed up memcpy
     asm volatile(
@@ -229,7 +228,7 @@ static void farmemset(uint32_t vaddr, uint16_t val, uint32_t size)
           "xor %%edi, %%edi\n"
           ".arch i286\n"
         : "=c"(dummy), "=D"(dummy)
-        : "a"(val), "d"(FP_SEG(p)), "D"(FP_OFF(p)),
+        : "a"(val), "d"(FP_SEG(ptr)), "D"(FP_OFF(ptr)),
           [size]"m"(size), [offs]"m"(vaddr)
         : "memory");
 }
@@ -453,7 +452,7 @@ int main(int argc, char *argv[], char *envp[])
 
     read_section(ifile, coffset, SCT_TEXT);
     read_section(ifile, coffset, SCT_DATA);
-    farmemset(scns[SCT_BSS].s_vaddr, 0, scns[SCT_BSS].s_size);
+    farmemset(client_memory, scns[SCT_BSS].s_vaddr, 0, scns[SCT_BSS].s_size);
 
     stubinfo.self_fd = ifile;
     stubinfo.payload_offs = noffset;
