@@ -82,7 +82,7 @@ static void read_section(char __far *buf, int ifile, long coffset, int sc)
     }
 }
 
-int read_coff_headers(int ifile, uint32_t *r_ent)
+static int read_coff_headers(int ifile, uint32_t *r_ent)
 {
     struct coff_header chdr;
     struct opt_header ohdr;
@@ -121,9 +121,15 @@ int read_coff_headers(int ifile, uint32_t *r_ent)
     return scns[SCT_BSS].s_vaddr + scns[SCT_BSS].s_size;
 }
 
-void read_coff_sections(char __far *ptr, int ifile, uint32_t offset)
+static void read_coff_sections(char __far *ptr, int ifile, uint32_t offset)
 {
     read_section(ptr, ifile, offset, SCT_TEXT);
     read_section(ptr, ifile, offset, SCT_DATA);
     farmemset(ptr, scns[SCT_BSS].s_vaddr, 0, scns[SCT_BSS].s_size);
 }
+
+
+struct ldops coff_ops = {
+    read_coff_headers,
+    read_coff_sections,
+};

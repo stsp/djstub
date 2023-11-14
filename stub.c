@@ -28,6 +28,7 @@
 #include "stubinfo.h"
 #include "coff.h"
 #include "util.h"
+#include "stub.h"
 
 #define STUB_DEBUG 0
 #if STUB_DEBUG
@@ -148,6 +149,7 @@ int main(int argc, char *argv[], char *envp[])
     unsigned long alloc_size;
     unsigned long stubinfo_mem;
     dpmi_dos_block db;
+    struct ldops *ops = NULL;
     char *argv0 = strdup(argv[0]);
 
     if (argc == 0) {
@@ -182,6 +184,7 @@ int main(int argc, char *argv[], char *envp[])
             memcpy(&nsize, &buf[0x20], sizeof(nsize));
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
+            ops = &coff_ops;
         } else {
             fprintf(stderr, "not an exe %s at %lx\n", argv[0], coffset);
             exit(EXIT_FAILURE);
@@ -189,7 +192,8 @@ int main(int argc, char *argv[], char *envp[])
         lseek(ifile, coffset, SEEK_SET);
     }
 
-    va_size = read_coff_headers(ifile, &clnt_entry.offset32);
+    assert(ops);
+    va_size = ops->read_headers(ifile, &clnt_entry.offset32);
     if (va_size == -1)
         exit(EXIT_FAILURE);
 
@@ -295,7 +299,7 @@ int main(int argc, char *argv[], char *envp[])
         : "a"(7), "b"(stubinfo_fs), "c"(mem_hi), "d"(mem_lo)
         : "cc");
 
-    read_coff_sections(client_memory, ifile, coffset);
+    ops->read_sections(client_memory, ifile, coffset);
 
     stubinfo.self_fd = ifile;
     stubinfo.payload_offs = noffset;
