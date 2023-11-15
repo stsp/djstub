@@ -137,6 +137,7 @@ int main(int argc, char *argv[], char *envp[])
 {
     int ifile;
     off_t coffset = 0;
+    uint32_t coffsize = 0;
     uint32_t noffset = 0;
     uint32_t nsize = 0;
     int rc, i;
@@ -180,9 +181,9 @@ int main(int argc, char *argv[], char *envp[])
             stub_debug("Found exe header %i at 0x%lx\n", cnt, coffset);
             memcpy(&offs, &buf[0x3c], sizeof(offs));
             coffset = offs;
-            memcpy(&noffset, &buf[0x1c], sizeof(noffset));
-            if (noffset)
-                noffset += offs;
+            memcpy(&coffsize, &buf[0x1c], sizeof(noffset));
+            if (coffsize)
+                noffset = coffset + coffsize;
             memcpy(&nsize, &buf[0x20], sizeof(nsize));
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
@@ -310,6 +311,8 @@ int main(int argc, char *argv[], char *envp[])
     ops->read_sections(handle, client_memory, ifile, coffset);
 
     stubinfo.self_fd = ifile;
+    stubinfo.self_offs = coffset;
+    stubinfo.self_size = coffsize;
     stubinfo.payload_offs = noffset;
     stubinfo.payload_size = nsize;
     lseek(ifile, noffset, SEEK_SET);
