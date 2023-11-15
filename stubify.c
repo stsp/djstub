@@ -41,18 +41,6 @@ static int rmstub;
 static char *generate;
 static char *overlay;
 
-static unsigned long
-get32(unsigned char *ptr)
-{
-  return ptr[0] | (ptr[1]<<8) | (ptr[2]<<16) | (ptr[3]<<24);
-}
-
-static unsigned short
-get16(unsigned char *ptr)
-{
-  return ptr[0] | (ptr[1]<<8);
-}
-
 static void coff2exe(char *fname)
 {
   char ifilename[256];
@@ -62,13 +50,10 @@ static void coff2exe(char *fname)
   int ofile;
   char *ofname, *ofext;
   char buf[4096];
-  int rbytes, used_temp = 0, i, n;
+  int rbytes, used_temp = 0;
   long coffset=0;
-  unsigned char filehdr_buf[20];
   unsigned char mzhdr_buf[0x40];
-  int max_file_size = 0;
   uint32_t coff_file_size = 0;
-  int drop_last_four_bytes = 0;
   int rmoverlay = 0;
   int can_copy_ovl = 0;
 
@@ -174,28 +159,6 @@ static void coff2exe(char *fname)
           sizeof(coff_file_size));
   }
 
-  read(ifile, filehdr_buf, 20); /* get the COFF header */
-  lseek(ifile, get16(filehdr_buf+16), SEEK_CUR); /* skip optional header */
-  n = get16(filehdr_buf + 2);
-  for (i=0; i<n; i++) /* for each COFF section */
-  {
-    int addr, size, flags;
-    unsigned char coffsec_buf[40];
-    read(ifile, coffsec_buf, 40);
-    size = get32(coffsec_buf+16);
-    addr = get32(coffsec_buf+20);
-    flags = get32(coffsec_buf+36);
-    if (flags & 0x60) /* text or data */
-    {
-      int maybe_file_size = size + addr;
-      if (max_file_size < maybe_file_size)
-	max_file_size = maybe_file_size;
-    }
-  }
-  if (coff_file_size == max_file_size + 4)
-    /* it was built with "gcc -s" and has four too many bytes */
-    drop_last_four_bytes = 1;
-
   lseek(ifile, coffset, SEEK_SET);
 
   ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0644);
@@ -221,8 +184,6 @@ static void coff2exe(char *fname)
   {
     int wb;
 
-    if (drop_last_four_bytes && rbytes < 4096)
-      rbytes -= 4;
     if (rmoverlay && rbytes > coff_file_size)
       rbytes = coff_file_size;
 
