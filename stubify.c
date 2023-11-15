@@ -127,7 +127,7 @@ static void coff2exe(char *fname)
     {
       break;
     }
-    else if (buf[0] == 0x75 && buf[1] == 0x45 &&
+    else if (buf[0] == 0x7f && buf[1] == 0x45 &&
                 buf[2] == 0x4c && buf[3] == 0x46) /* it's an ELF */
     {
       break;

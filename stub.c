@@ -187,7 +187,7 @@ int main(int argc, char *argv[], char *envp[])
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
             ops = &coff_ops;
-        } else if (buf[0] == 0x75 && buf[1] == 0x45 &&
+        } else if (buf[0] == 0x7f && buf[1] == 0x45 &&
                 buf[2] == 0x4c && buf[3] == 0x46) { /* it's an ELF */
             done = 1;
             ops = &elf_ops;

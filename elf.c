@@ -77,7 +77,7 @@ static void *read_elf_headers(int ifile)
         Elf32_Phdr *phdr = &h->phdr[i];
         if (phdr->p_type != PT_LOAD)
             continue;
-        if (phdr->p_align != 12) {
+        if (phdr->p_align != 4096) {
             fprintf(stderr, "unsupported ELF alignment %li\n", phdr->p_align);
             return NULL;
         }
@@ -102,7 +102,7 @@ static uint32_t get_elf_length(void *handle)
 static uint32_t get_elf_entry(void *handle)
 {
     struct elf_h *h = handle;
-    return h->length;
+    return h->entry;
 }
 
 static void read_elf_sections(void *handle, char __far *ptr, int ifile,
