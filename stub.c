@@ -168,7 +168,7 @@ int main(int argc, char *argv[], char *envp[])
     while (!done) {
         int cnt = 0;
 
-        stub_debug("Expecting header at %lx\n", coffset);
+        stub_debug("Expecting header at 0x%lx\n", coffset);
         rc = read(ifile, buf, BUF_SIZE);
         if (rc != BUF_SIZE) {
             perror("fread()");
@@ -177,7 +177,7 @@ int main(int argc, char *argv[], char *envp[])
         if (buf[0] == 'M' && buf[1] == 'Z' && buf[8] == 4 /* lfanew */) {
             uint32_t offs;
             cnt++;
-            stub_debug("Found exe header %i at %lx\n", cnt, coffset);
+            stub_debug("Found exe header %i at 0x%lx\n", cnt, coffset);
             memcpy(&offs, &buf[0x3c], sizeof(offs));
             coffset = offs;
             memcpy(&noffset, &buf[0x1c], sizeof(noffset));
@@ -231,7 +231,7 @@ int main(int argc, char *argv[], char *envp[])
     link_umb(1);
     db = _DPMIAllocateDOSMemoryBlock(stubinfo.minkeep >> 4);
     link_umb(0);
-    stub_debug("rm seg %x\n", db.rm);
+    stub_debug("rm seg 0x%x\n", db.rm);
     stubinfo.ds_selector = db.pm;
     stubinfo.ds_segment = db.rm;
     /* create alias */
@@ -314,7 +314,7 @@ int main(int argc, char *argv[], char *envp[])
     stubinfo.payload_size = nsize;
     lseek(ifile, noffset, SEEK_SET);
     if (nsize > 0)
-        stub_debug("Found payload of size %li at %lx\n", nsize, noffset);
+        stub_debug("Found payload of size %li at 0x%lx\n", nsize, noffset);
     stubinfo.stubinfo_ver = 2;
 
     stub_debug("Jump to entry...\n");

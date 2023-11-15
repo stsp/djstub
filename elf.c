@@ -27,7 +27,7 @@
 #include "elf.h"
 #include "elfp.h"
 
-#define STUB_DEBUG 1
+#define STUB_DEBUG 0
 #if STUB_DEBUG
 #define stub_debug(...) printf(__VA_ARGS__)
 #else
@@ -84,7 +84,7 @@ static void *read_elf_headers(int ifile)
         if (phdr->p_vaddr + phdr->p_memsz > ret)
             ret = phdr->p_vaddr + phdr->p_memsz;
 #if STUB_DEBUG
-        stub_debug("PHDR pa %lx va %lx size %lx foffs %lx\n",
+        stub_debug("PHDR pa 0x%lx va 0x%lx size 0x%lx foffs 0x%lx\n",
                 phdr->p_paddr, phdr->p_vaddr, phdr->p_filesz, phdr->p_offset);
 #endif
     }
