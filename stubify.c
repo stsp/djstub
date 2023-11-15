@@ -9,27 +9,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
-#ifdef __DJGPP__
-#include <io.h>
-#include <libc/dosio.h>
-#include <go32.h>
-#include <dpmi.h>
-#include <errno.h>
-#endif
-
-#ifdef __DJGPP__
-#ifndef __tb_size
-#define __tb_size _go32_info_block.size_of_transfer_buffer
-#endif
-#endif
-
-#ifndef O_BINARY
-#define O_BINARY 0
-#endif
-
-#ifndef SEEK_SET
-#define SEEK_SET 0
-#endif
 
 extern char _binary_stub_exe_end[];
 extern char _binary_stub_exe_size[];
@@ -81,7 +60,7 @@ static void coff2exe(char *fname)
   else
     used_temp = 0;
 
-  ifile = open(ifilename, O_RDONLY|O_BINARY);
+  ifile = open(ifilename, O_RDONLY);
   if (ifile < 0)
   {
     perror(fname);
@@ -89,7 +68,7 @@ static void coff2exe(char *fname)
   }
   if (overlay)
   {
-    iovfile = open(overlay, O_RDONLY | O_BINARY);
+    iovfile = open(overlay, O_RDONLY);
     if (iovfile < 0)
     {
       close(ifile);
@@ -161,7 +140,7 @@ static void coff2exe(char *fname)
 
   lseek(ifile, coffset, SEEK_SET);
 
-  ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0644);
+  ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC, 0644);
   if (ofile < 0)
   {
     perror(ofilename);
@@ -312,7 +291,7 @@ int main(int argc, char **argv)
       ofext = ofilename + strlen(ofilename);
     strcpy(ofext, ".exe");
 
-    ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0666);
+    ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC, 0666);
     if (ofile < 0)
     {
       fprintf(stderr, "Cannot open output file to generate\n");
