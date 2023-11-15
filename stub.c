@@ -1,5 +1,5 @@
 /*
- *  go32-compatible COFF and PE32 stub. TODO: ELF support.
+ *  go32-compatible COFF, PE32 and ELF loader stub.
  *  Copyright (C) 2022,  stsp <stsp@users.sourceforge.net>
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 #include <assert.h>
 #include "stubinfo.h"
 #include "coff.h"
+#include "elfp.h"
 #include "util.h"
 #include "stub.h"
 
@@ -149,6 +150,7 @@ int main(int argc, char *argv[], char *envp[])
     unsigned long alloc_size;
     unsigned long stubinfo_mem;
     dpmi_dos_block db;
+    void *handle;
     struct ldops *ops = NULL;
     char *argv0 = strdup(argv[0]);
 
@@ -185,6 +187,10 @@ int main(int argc, char *argv[], char *envp[])
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
             ops = &coff_ops;
+        } else if (buf[0] == 0x75 && buf[1] == 0x45 &&
+                buf[2] == 0x4c && buf[3] == 0x46) { /* it's an ELF */
+            done = 1;
+            ops = &elf_ops;
         } else {
             fprintf(stderr, "not an exe %s at %lx\n", argv[0], coffset);
             exit(EXIT_FAILURE);
@@ -193,9 +199,11 @@ int main(int argc, char *argv[], char *envp[])
     }
 
     assert(ops);
-    va_size = ops->read_headers(ifile, &clnt_entry.offset32);
-    if (va_size == -1)
+    handle = ops->read_headers(ifile);
+    if (!handle)
         exit(EXIT_FAILURE);
+    va_size = ops->get_length(handle);
+    clnt_entry.offset32 = ops->get_entry(handle);
 
     strncpy(stubinfo.magic, "go32stub,v3,stsp", sizeof(stubinfo.magic));
     stubinfo.size = sizeof(stubinfo);
@@ -299,7 +307,7 @@ int main(int argc, char *argv[], char *envp[])
         : "a"(7), "b"(stubinfo_fs), "c"(mem_hi), "d"(mem_lo)
         : "cc");
 
-    ops->read_sections(client_memory, ifile, coffset);
+    ops->read_sections(handle, client_memory, ifile, coffset);
 
     stubinfo.self_fd = ifile;
     stubinfo.payload_offs = noffset;

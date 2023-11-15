@@ -6,7 +6,7 @@ O_BDFARCH=$(shell $(OBJCOPY) --info | head -n 2 | tail -n 1)
 PROG = djstubify
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
-CFILES = stub.c coff.c util.c
+CFILES = stub.c coff.c elf.c util.c
 OBJECTS = $(CFILES:.c=.o)
 
 all: $(PROG)

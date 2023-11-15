@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <assert.h>
 #include "util.h"
 #include "coff.h"
 
@@ -68,6 +69,11 @@ enum { SCT_TEXT, SCT_DATA, SCT_BSS, SCT_MAX };
 
 static struct scn_header scns[SCT_MAX];
 
+struct coff_h {
+    uint32_t length;
+    uint32_t entry;
+};
+
 static void read_section(char __far *buf, int ifile, long coffset, int sc)
 {
     long bytes;
@@ -82,33 +88,34 @@ static void read_section(char __far *buf, int ifile, long coffset, int sc)
     }
 }
 
-static int read_coff_headers(int ifile, uint32_t *r_ent)
+static void *read_coff_headers(int ifile)
 {
     struct coff_header chdr;
     struct opt_header ohdr;
+    struct coff_h *h;
     int rc;
 
     rc = read(ifile, &chdr, sizeof(chdr)); /* get the COFF header */
     if (rc != sizeof(chdr)) {
         fprintf(stderr, "bad COFF header\n");
-        return -1;
+        return NULL;
     }
     if (chdr.f_opthdr < sizeof(ohdr)) {
         fprintf(stderr, "opt header size mismatch: %i %zi\n",
                 chdr.f_opthdr, sizeof(ohdr));
-        return -1;
+        return NULL;
     }
     rc = read(ifile, &ohdr, sizeof(ohdr)); /* get the COFF opt header */
     if (rc != sizeof(ohdr)) {
         fprintf(stderr, "bad COFF opt header\n");
-        return -1;
+        return NULL;
     }
     if (chdr.f_opthdr > sizeof(ohdr))
         lseek(ifile, chdr.f_opthdr - sizeof(ohdr), SEEK_CUR);
     rc = read(ifile, scns, sizeof(scns[0]) * SCT_MAX);
     if (rc != sizeof(scns[0]) * SCT_MAX) {
         fprintf(stderr, "failed to read section headers\n");
-        return -1;
+        return NULL;
     }
 #if STUB_DEBUG
     for (i = 0; i < SCT_MAX; i++) {
@@ -117,19 +124,39 @@ static int read_coff_headers(int ifile, uint32_t *r_ent)
                 h->s_name, h->s_paddr, h->s_vaddr, h->s_size, h->s_scnptr);
     }
 #endif
-    *r_ent = ohdr.entry;
-    return scns[SCT_BSS].s_vaddr + scns[SCT_BSS].s_size;
+    h = malloc(sizeof(*h));
+    assert(h);
+    h->entry = ohdr.entry;
+    h->length = scns[SCT_BSS].s_vaddr + scns[SCT_BSS].s_size;
+    return h;
 }
 
-static void read_coff_sections(char __far *ptr, int ifile, uint32_t offset)
+static uint32_t get_coff_length(void *handle)
 {
+    struct coff_h *h = handle;
+    return h->length;
+}
+
+static uint32_t get_coff_entry(void *handle)
+{
+    struct coff_h *h = handle;
+    return h->entry;
+}
+
+static void read_coff_sections(void *handle, char __far *ptr, int ifile,
+        uint32_t offset)
+{
+    struct coff_h *h = handle;
     read_section(ptr, ifile, offset, SCT_TEXT);
     read_section(ptr, ifile, offset, SCT_DATA);
     farmemset(ptr, scns[SCT_BSS].s_vaddr, 0, scns[SCT_BSS].s_size);
+    free(h);
 }
 
 
 struct ldops coff_ops = {
     read_coff_headers,
+    get_coff_length,
+    get_coff_entry,
     read_coff_sections,
 };

@@ -2,8 +2,11 @@
 #define STUB_H
 
 struct ldops {
-    int (*read_headers)(int ifile, uint32_t *r_ent);
-    void (*read_sections)(char __far *ptr, int ifile, uint32_t offset);
+    void *(*read_headers)(int ifile);
+    uint32_t (*get_length)(void *handle);
+    uint32_t (*get_entry)(void *handle);
+    void (*read_sections)(void *handle, char __far *ptr, int ifile,
+            uint32_t offset);
 };
 
 #endif
