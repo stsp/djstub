@@ -118,7 +118,7 @@ static void *read_coff_headers(int ifile)
         return NULL;
     }
 #if STUB_DEBUG
-    for (i = 0; i < SCT_MAX; i++) {
+    for (int i = 0; i < SCT_MAX; i++) {
         struct scn_header *h = &scns[i];
         stub_debug("Section %s pa %lx va %lx size %lx foffs %lx\n",
                 h->s_name, h->s_paddr, h->s_vaddr, h->s_size, h->s_scnptr);
