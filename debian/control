@@ -8,6 +8,7 @@ Build-Depends:
     make,
     gcc-ia16-elf,
     libi86-ia16-elf,
+    causeway-dosx,
     debhelper (>= 9~)
 Homepage: https://github.com/stsp/djstub
 
