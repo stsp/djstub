@@ -37,10 +37,9 @@ extern char _binary_stub_exe_start[];
 #define v_printf if(verbose)printf
 static int verbose;
 static int rmstub;
-static char *generate;
 static char *overlay;
 
-static void coff2exe(char *fname)
+static void coff2exe(char *fname, char *oname)
 {
   char ifilename[256];
   char ofilename[256];
@@ -57,7 +56,7 @@ static void coff2exe(char *fname)
   int can_copy_ovl = 0;
 
   strcpy(ifilename, fname);
-  strcpy(ofilename, fname);
+  strcpy(ofilename, oname);
   ofext = 0;
   for (ofname=ofilename; *ofname; ofname++)
   {
@@ -249,6 +248,9 @@ static void print_help(void)
 
 int main(int argc, char **argv)
 {
+  char *generate = NULL;
+  char *oname = NULL;
+
   while (argc > 1 && argv[1][0] == '-')
   {
     if (strcmp(argv[1], "-v")==0)
@@ -282,6 +284,17 @@ int main(int argc, char **argv)
 	return 1;
       }
       overlay = argv[2];
+      argv += 2;
+      argc -= 2;
+    }
+    else if (strcmp(argv[1], "-o")==0)
+    {
+      if (argc < 2)
+      {
+	fprintf(stderr, "-o option requires file name\n");
+	return 1;
+      }
+      oname = argv[2];
       argv += 2;
       argc -= 2;
     }
@@ -332,7 +345,7 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    coff2exe(argv[argc - 1]);
+    coff2exe(argv[argc - 1], oname ?: argv[argc - 1]);
   }
 
   return 0;
