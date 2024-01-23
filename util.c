@@ -79,7 +79,8 @@ long _long_read(int file, char __far *buf, unsigned long offset,
         unsigned todo = min(size, sizeof(tmp));
         size_t rd = read(file, tmp, todo);
         if (rd) {
-            farmemcpy(buf, offset + done, tmp, rd);
+            /* word-align memcpy */
+            farmemcpy(buf, offset + done, tmp, rd + (rd & 1));
             done += rd;
             size -= rd;
         }
