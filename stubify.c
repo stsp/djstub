@@ -43,6 +43,7 @@ static int rmstub;
 #define MAX_OVL 5
 static char *overlay[MAX_OVL];
 static int noverlay;
+static int info;
 
 static int copy_ovl(const char *ovl, int ofile)
 {
@@ -132,6 +133,22 @@ static void coff2exe(char *fname, char *oname)
         can_copy_ovl++;
         if (rmstub || noverlay)
           rmoverlay++;
+
+        if (info) {
+          int cnt = 0;
+          for (i = 0x1c; i < 0x40; i += 4) {
+            uint32_t sz;
+            memcpy(&sz, &buf[i], sizeof(sz));
+            if (!sz)
+              break;
+            printf("Overlay %i at %li, size %i\n", cnt, coffset, sz);
+            coffset += sz;
+            cnt++;
+          }
+          close(ifile);
+          return;
+        }
+
       }
       else
       {
@@ -183,6 +200,12 @@ static void coff2exe(char *fname, char *oname)
     /* assume there is just 1 overlay */
     memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
           sizeof(coff_file_size));
+  }
+
+  if (info) {
+    printf("wrong file format\n");
+    close(ifile);
+    return;
   }
 
   lseek(ifile, coffset, SEEK_SET);
@@ -258,6 +281,7 @@ static void print_help(void)
 	  "Resulting file will have .exe\n\n"
 	  "Options:\n"
 	  "-v -> verbose\n"
+	  "-i -> display file info\n"
 	  "-r -> remove stub (and overlay, if any)\n"
 	  "-l <file_name> -> link in <file_name> file as an overlay\n"
 	  "-g <file_name> -> write a stub alone into a file\n"
@@ -272,11 +296,14 @@ int main(int argc, char **argv)
   char *oname = NULL;
   int c;
 
-  while ((c = getopt(argc, argv, "vrg:l:o:")) != -1)
+  while ((c = getopt(argc, argv, "virg:l:o:")) != -1)
   {
     switch (c) {
     case 'v':
       verbose = 1;
+      break;
+    case 'i':
+      info = 1;
       break;
     case 'r':
       rmstub = 1;
