@@ -44,6 +44,7 @@ static int rmstub;
 static char *overlay[MAX_OVL];
 static int noverlay;
 static int info;
+static int strip;
 
 static int copy_ovl(const char *ovl, int ofile)
 {
@@ -131,24 +132,33 @@ static void coff2exe(char *fname, char *oname)
         memcpy(&coff_file_size, &buf[0x1c], sizeof(coff_file_size));
         memcpy(mzhdr_buf, buf, sizeof(mzhdr_buf));
         can_copy_ovl++;
-        if (rmstub || noverlay)
+        if (rmstub || noverlay || strip)
           rmoverlay++;
 
-        if (info) {
+        if (info || strip) {
           int cnt = 0;
+          uint32_t sz = 0;
           for (i = 0x1c; i < 0x40; i += 4) {
-            uint32_t sz;
-            memcpy(&sz, &buf[i], sizeof(sz));
-            if (!sz)
+            uint32_t sz0;
+            memcpy(&sz0, &buf[i], sizeof(sz0));
+            if (!sz0) {
+              if (strip && sz) {
+                coff_file_size = offs - sz - coffset;
+                memset(&mzhdr_buf[i - 4], 0, 4);
+              }
               break;
-            printf("Overlay %i at %li, size %i\n", cnt, coffset, sz);
-            coffset += sz;
+            }
+            sz = sz0;
+            if (info)
+              printf("Overlay %i at %i, size %i\n", cnt, offs, sz);
+            offs += sz;
             cnt++;
           }
-          close(ifile);
-          return;
+          if (info) {
+            close(ifile);
+            return;
+          }
         }
-
       }
       else
       {
@@ -207,8 +217,6 @@ static void coff2exe(char *fname, char *oname)
     close(ifile);
     return;
   }
-
-  lseek(ifile, coffset, SEEK_SET);
 
   ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC, 0644);
   if (ofile < 0)
@@ -282,6 +290,7 @@ static void print_help(void)
 	  "Options:\n"
 	  "-v -> verbose\n"
 	  "-i -> display file info\n"
+	  "-s -> strip last overlay\n"
 	  "-r -> remove stub (and overlay, if any)\n"
 	  "-l <file_name> -> link in <file_name> file as an overlay\n"
 	  "-g <file_name> -> write a stub alone into a file\n"
@@ -296,7 +305,7 @@ int main(int argc, char **argv)
   char *oname = NULL;
   int c;
 
-  while ((c = getopt(argc, argv, "virg:l:o:")) != -1)
+  while ((c = getopt(argc, argv, "virsg:l:o:")) != -1)
   {
     switch (c) {
     case 'v':
@@ -307,6 +316,9 @@ int main(int argc, char **argv)
       break;
     case 'r':
       rmstub = 1;
+      break;
+    case 's':
+      strip = 1;
       break;
     case 'g':
       generate = optarg;
