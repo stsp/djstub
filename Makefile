@@ -31,7 +31,11 @@ stubify.o: stubify.c
 	cc -Wall $< -c -g -o $@
 
 install:
-	install -D -t $(DESTDIR)$(BINDIR) -m 0755 $(PROG)
+	install -d $(DESTDIR)$(BINDIR)
+	install -m 0755 $(PROG) $(DESTDIR)$(BINDIR)
+
+uninstall:
+	$(RM) $(DESTDIR)$(BINDIR)/$(PROG)
 
 deb:
 	debuild -i -us -uc -b
