@@ -33,9 +33,11 @@ stubify.o: stubify.c
 install:
 	install -d $(DESTDIR)$(BINDIR)
 	install -m 0755 $(PROG) $(DESTDIR)$(BINDIR)
+	install -m 0755 djstrip $(DESTDIR)$(BINDIR)
 
 uninstall:
 	$(RM) $(DESTDIR)$(BINDIR)/$(PROG)
+	$(RM) $(DESTDIR)$(BINDIR)/djstrip
 
 deb:
 	debuild -i -us -uc -b

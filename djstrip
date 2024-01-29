@@ -1,0 +1,9 @@
+if [ -z "$1" ]; then
+  echo "Usage: djstrip <file_name>"
+  exit 0
+fi
+O2=`djstubify -i $1 | grep "Overlay 2"`
+if [ -z "$O2" ]; then
+  exit 1
+fi
+djstubify -s $1
