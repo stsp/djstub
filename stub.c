@@ -21,6 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <dos.h>
 #include <dpmi.h>
@@ -140,6 +141,8 @@ int main(int argc, char *argv[], char *envp[])
     uint32_t coffsize = 0;
     uint32_t noffset = 0;
     uint32_t nsize = 0;
+    uint32_t noffset2 = 0;
+    uint32_t nsize2 = 0;
     int rc, i;
 #define BUF_SIZE 0x40
     char buf[BUF_SIZE];
@@ -154,6 +157,7 @@ int main(int argc, char *argv[], char *envp[])
     void *handle;
     struct ldops *ops = NULL;
     char *argv0 = strdup(argv[0]);
+    char *p;
 
     if (argc == 0) {
         fprintf(stderr, "no env\n");
@@ -181,10 +185,13 @@ int main(int argc, char *argv[], char *envp[])
             stub_debug("Found exe header %i at 0x%lx\n", cnt, coffset);
             memcpy(&offs, &buf[0x3c], sizeof(offs));
             coffset = offs;
-            memcpy(&coffsize, &buf[0x1c], sizeof(noffset));
+            memcpy(&coffsize, &buf[0x1c], sizeof(coffsize));
             if (coffsize)
                 noffset = coffset + coffsize;
             memcpy(&nsize, &buf[0x20], sizeof(nsize));
+            if (nsize)
+                noffset2 = noffset + nsize;
+            memcpy(&nsize2, &buf[0x24], sizeof(nsize2));
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
             ops = &coff_ops;
@@ -222,7 +229,9 @@ int main(int argc, char *argv[], char *envp[])
     stubinfo.minstack = 0x80000;
     stubinfo.minkeep = 0x4000;
     strncpy(stubinfo.argv0, _basename(argv0), sizeof(stubinfo.argv0));
+    stubinfo.argv0[sizeof(stubinfo.argv0) - 1] = '\0';
     strncpy(stubinfo.basename, _fname(argv0), sizeof(stubinfo.basename));
+    stubinfo.basename[sizeof(stubinfo.basename) - 1] = '\0';
     strncpy(stubinfo.dpmi_server, "CWSDPMI.EXE", sizeof(stubinfo.dpmi_server));
 #define max(a, b) ((a) > (b) ? (a) : (b))
     stubinfo.initial_size = max(va_size, 0x10000);
@@ -315,6 +324,12 @@ int main(int argc, char *argv[], char *envp[])
     stubinfo.self_size = coffsize;
     stubinfo.payload_offs = noffset;
     stubinfo.payload_size = nsize;
+    stubinfo.payload2_offs = noffset2;
+    stubinfo.payload2_size = nsize2;
+    strcpy(stubinfo.payload2_name, stubinfo.argv0);
+    for (p = stubinfo.payload2_name; *p; p++)
+        *p = tolower(*p);
+    strcat(stubinfo.payload2_name, ".dbg");
     lseek(ifile, noffset, SEEK_SET);
     if (nsize > 0)
         stub_debug("Found payload of size %li at 0x%lx\n", nsize, noffset);
