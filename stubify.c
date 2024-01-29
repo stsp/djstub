@@ -29,6 +29,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <errno.h>
 
 extern char _binary_stub_exe_end[];
 extern char _binary_stub_exe_size[];
@@ -37,7 +38,9 @@ extern char _binary_stub_exe_start[];
 #define v_printf if(verbose)printf
 static int verbose;
 static int rmstub;
-static char *overlay;
+#define MAX_OVL 5
+static char *overlay[MAX_OVL];
+static int noverlay;
 
 static int copy_ovl(const char *ovl, int ofile)
 {
@@ -78,6 +81,7 @@ static void coff2exe(char *fname, char *oname)
   uint32_t coff_file_size = 0;
   int rmoverlay = 0;
   int can_copy_ovl = 0;
+  int i;
 
   strcpy(ifilename, fname);
   strcpy(ofilename, oname);
@@ -124,7 +128,7 @@ static void coff2exe(char *fname, char *oname)
         memcpy(&coff_file_size, &buf[0x1c], sizeof(coff_file_size));
         memcpy(mzhdr_buf, buf, sizeof(mzhdr_buf));
         can_copy_ovl++;
-        if (rmstub || overlay)
+        if (rmstub || noverlay)
           rmoverlay++;
       }
       else
@@ -155,13 +159,21 @@ static void coff2exe(char *fname, char *oname)
   if (!coff_file_size)
     coff_file_size = lseek(ifile, 0, SEEK_END) - coffset;
   lseek(ifile, coffset, SEEK_SET);
-  if (overlay) {
+  if (noverlay) {
     struct stat sb;
     /* store overlay sizes in overlay info */
     memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
           sizeof(coff_file_size));
-    stat(overlay, &sb);
-    memcpy(_binary_stub_exe_start + 0x20, &sb.st_size, 4);
+    for (i = 0; i < noverlay; i++) {
+      int rc = stat(overlay[i], &sb);
+      if (rc == -1) {
+        fprintf(stderr, "failed to stat %s: %s\n", overlay[i],
+            strerror(errno));
+        close(ifile);
+        return;
+      }
+      memcpy(_binary_stub_exe_start + 0x20 + i * 4, &sb.st_size, 4);
+    }
   } else if (can_copy_ovl) {
     /* copy entire overlay info except 0x3c */
     memcpy(_binary_stub_exe_start + 0x1c, mzhdr_buf + 0x1c, 0x3c - 0x1c);
@@ -213,9 +225,9 @@ static void coff2exe(char *fname, char *oname)
   }
   close(ifile);
 
-  if (overlay)
+  for (i = 0; i < noverlay; i++)
   {
-    int rc = copy_ovl(overlay, ofile);
+    int rc = copy_ovl(overlay[i], ofile);
     if (rc < 0)
     {
       perror(ofilename);
@@ -289,7 +301,7 @@ int main(int argc, char **argv)
 	fprintf(stderr, "-l option requires file name\n");
 	return 1;
       }
-      overlay = argv[2];
+      overlay[noverlay++] = argv[2];
       argv += 2;
       argc -= 2;
     }
