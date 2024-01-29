@@ -44,7 +44,6 @@ static void coff2exe(char *fname, char *oname)
   char ifilename[256];
   char ofilename[256];
   int ifile;
-  int iovfile = -1;
   int ofile;
   char *ofname, *ofext;
   char buf[4096];
@@ -84,16 +83,6 @@ static void coff2exe(char *fname, char *oname)
   {
     perror(fname);
     return;
-  }
-  if (overlay)
-  {
-    iovfile = open(overlay, O_RDONLY);
-    if (iovfile < 0)
-    {
-      close(ifile);
-      perror(overlay);
-      return;
-    }
   }
 
   while (1)
@@ -146,7 +135,7 @@ static void coff2exe(char *fname, char *oname)
     /* store overlay sizes in overlay info */
     memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
           sizeof(coff_file_size));
-    fstat(iovfile, &sb);
+    stat(overlay, &sb);
     memcpy(_binary_stub_exe_start + 0x20, &sb.st_size, 4);
   } else if (can_copy_ovl) {
     /* copy entire overlay info except 0x3c */
@@ -192,7 +181,6 @@ static void coff2exe(char *fname, char *oname)
     {
       perror(ofilename);
       close(ifile);
-      close(iovfile);
       close(ofile);
       unlink(ofilename);
       exit(1);
@@ -202,6 +190,12 @@ static void coff2exe(char *fname, char *oname)
 
   if (overlay)
   {
+    int iovfile = open(overlay, O_RDONLY);
+    if (iovfile < 0)
+    {
+      perror(overlay);
+      return;
+    }
     while ((rbytes = read(iovfile, buf, 4096)) > 0)
     {
       int wb;
