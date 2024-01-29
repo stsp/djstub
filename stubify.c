@@ -30,6 +30,8 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <errno.h>
+#include <getopt.h>
+#include <assert.h>
 
 extern char _binary_stub_exe_end[];
 extern char _binary_stub_exe_size[];
@@ -268,57 +270,29 @@ int main(int argc, char **argv)
 {
   char *generate = NULL;
   char *oname = NULL;
+  int c;
 
-  while (argc > 1 && argv[1][0] == '-')
+  while ((c = getopt(argc, argv, "vrg:l:o:")) != -1)
   {
-    if (strcmp(argv[1], "-v")==0)
-    {
+    switch (c) {
+    case 'v':
       verbose = 1;
-      argv++;
-      argc--;
-    }
-    if (strcmp(argv[1], "-r")==0)
-    {
+      break;
+    case 'r':
       rmstub = 1;
-      argv++;
-      argc--;
-    }
-    else if (strcmp(argv[1], "-g")==0)
-    {
-      if (argc < 2)
-      {
-	fprintf(stderr, "-g option requires file name\n");
-	return 1;
-      }
-      generate = argv[2];
-      argv += 2;
-      argc -= 2;
-    }
-    else if (strcmp(argv[1], "-l")==0)
-    {
-      if (argc < 2)
-      {
-	fprintf(stderr, "-l option requires file name\n");
-	return 1;
-      }
-      overlay[noverlay++] = argv[2];
-      argv += 2;
-      argc -= 2;
-    }
-    else if (strcmp(argv[1], "-o")==0)
-    {
-      if (argc < 2)
-      {
-	fprintf(stderr, "-o option requires file name\n");
-	return 1;
-      }
-      oname = argv[2];
-      argv += 2;
-      argc -= 2;
-    }
-    else
-    {
-      fprintf(stderr, "Unknow option: %s\n", argv[1]);
+      break;
+    case 'g':
+      generate = optarg;
+      break;
+    case 'l':
+      assert(noverlay < MAX_OVL);
+      overlay[noverlay++] = optarg;
+      break;
+    case 'o':
+      oname = optarg;
+      break;
+    default:
+      fprintf(stderr, "Unknow option: %c\n", c);
       print_help();
       return 1;
     }
