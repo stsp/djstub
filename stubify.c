@@ -39,6 +39,31 @@ static int verbose;
 static int rmstub;
 static char *overlay;
 
+static int copy_ovl(const char *ovl, int ofile)
+{
+  char buf[4096];
+  int rbytes;
+  int ret = 0;
+  int iovfile = open(ovl, O_RDONLY);
+  if (iovfile < 0)
+  {
+    perror(ovl);
+    return -1;
+  }
+  while ((rbytes = read(iovfile, buf, 4096)) > 0)
+  {
+    int wb;
+
+    wb = write(ofile, buf, rbytes);
+    if (wb != rbytes) {
+      ret = -1;
+      break;
+    }
+  }
+  close(iovfile);
+  return ret;
+}
+
 static void coff2exe(char *fname, char *oname)
 {
   char ifilename[256];
@@ -190,27 +215,14 @@ static void coff2exe(char *fname, char *oname)
 
   if (overlay)
   {
-    int iovfile = open(overlay, O_RDONLY);
-    if (iovfile < 0)
+    int rc = copy_ovl(overlay, ofile);
+    if (rc < 0)
     {
-      perror(overlay);
-      return;
+      perror(ofilename);
+      close(ofile);
+      unlink(ofilename);
+      exit(1);
     }
-    while ((rbytes = read(iovfile, buf, 4096)) > 0)
-    {
-      int wb;
-
-      wb = write(ofile, buf, rbytes);
-      if (wb != rbytes)
-      {
-        perror(ofilename);
-        close(iovfile);
-        close(ofile);
-        unlink(ofilename);
-        exit(1);
-      }
-    }
-    close(iovfile);
   }
   close(ofile);
 
