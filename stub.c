@@ -273,6 +273,7 @@ int main(int argc, char *argv[], char *envp[])
     stubinfo.memory_handle = ((uint32_t)si << 16) | di;
     mem_lin = ((uint32_t)mem_hi << 16) | mem_lo;
     mem_base = mem_lin - va;
+    stubinfo.mem_base = mem_base;
     stub_debug("mem_lin 0x%lx mem_base 0x%lx\n", mem_lin, mem_base);
     client_memory = MK_FP(clnt_ds, 0);
     /* set base */
