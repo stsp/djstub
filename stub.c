@@ -147,7 +147,10 @@ int main(int argc, char *argv[], char *envp[])
 #define BUF_SIZE 0x40
     char buf[BUF_SIZE];
     int done = 0;
-    long va_size;
+    uint32_t va;
+    uint32_t va_size;
+    uint32_t mem_lin;
+    uint32_t mem_base;
     unsigned short clnt_ds;
     unsigned short stubinfo_fs;
     unsigned short mem_hi, mem_lo, si, di;
@@ -210,8 +213,11 @@ int main(int argc, char *argv[], char *envp[])
     handle = ops->read_headers(ifile);
     if (!handle)
         exit(EXIT_FAILURE);
+    va = ops->get_va(handle);
     va_size = ops->get_length(handle);
     clnt_entry.offset32 = ops->get_entry(handle);
+    stub_debug("va 0x%lx va_size 0x%lx entry 0x%lx\n",
+            va, va_size, clnt_entry.offset32);
 
     strncpy(stubinfo.magic, "go32stub,v3,stsp", sizeof(stubinfo.magic));
     stubinfo.size = sizeof(stubinfo);
@@ -265,11 +271,17 @@ int main(int argc, char *argv[], char *envp[])
           "c"((uint16_t)(alloc_size & 0xffff))
         : "cc");
     stubinfo.memory_handle = ((uint32_t)si << 16) | di;
+    mem_lin = ((uint32_t)mem_hi << 16) | mem_lo;
+    mem_base = mem_lin - va;
+    stub_debug("mem_lin 0x%lx mem_base 0x%lx\n", mem_lin, mem_base);
     client_memory = MK_FP(clnt_ds, 0);
     /* set base */
     asm volatile("int $0x31\n"
         :
-        : "a"(7), "b"(clnt_entry.selector), "c"(mem_hi), "d"(mem_lo)
+        : "a"(7),
+          "b"(clnt_entry.selector),
+          "c"((uint16_t)(mem_base >> 16)),
+          "d"((uint16_t)(mem_base & 0xffff))
         : "cc");
     /* set descriptor access rights */
     asm volatile("int $0x31\n"
@@ -280,13 +292,16 @@ int main(int argc, char *argv[], char *envp[])
     asm volatile("int $0x31\n"
         :
         : "a"(8), "b"(clnt_entry.selector),
-          "c"((uint16_t)(stubinfo.initial_size >> 16)),
+          "c"(0xffff),
           "d"(0xffff)
         : "cc");
     /* set base */
     asm volatile("int $0x31\n"
         :
-        : "a"(7), "b"(clnt_ds), "c"(mem_hi), "d"(mem_lo)
+        : "a"(7),
+          "b"(clnt_ds),
+          "c"((uint16_t)(mem_base >> 16)),
+          "d"((uint16_t)(mem_base & 0xffff))
         : "cc");
     /* set descriptor access rights */
     asm volatile("int $0x31\n"
@@ -297,7 +312,7 @@ int main(int argc, char *argv[], char *envp[])
     asm volatile("int $0x31\n"
         :
         : "a"(8), "b"(clnt_ds),
-          "c"((uint16_t)(stubinfo.initial_size >> 16)),
+          "c"(0xffff),
           "d"(0xffff)
         : "cc");
 

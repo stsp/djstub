@@ -35,6 +35,7 @@
 #endif
 
 struct elf_h {
+    uint32_t va;
     uint32_t length;
     uint32_t entry;
     int phnum;
@@ -46,7 +47,7 @@ static void *read_elf_headers(int ifile)
     Elf32_Ehdr ehdr;
     struct elf_h *h;
     int i, rc;
-    long ret = 0;
+    long beg = 0, end = 0;
 
     rc = read(ifile, &ehdr, sizeof(ehdr)); /* get the ELF header */
     if (rc != sizeof(ehdr)) {
@@ -81,15 +82,18 @@ static void *read_elf_headers(int ifile)
             fprintf(stderr, "unsupported ELF alignment %li\n", phdr->p_align);
             return NULL;
         }
-        if (phdr->p_vaddr + phdr->p_memsz > ret)
-            ret = phdr->p_vaddr + phdr->p_memsz;
+        if (phdr->p_vaddr < beg || !beg)
+            beg = phdr->p_vaddr;
+        if (phdr->p_vaddr + phdr->p_memsz > end)
+            end = phdr->p_vaddr + phdr->p_memsz;
 #if STUB_DEBUG
         stub_debug("PHDR pa 0x%lx va 0x%lx size 0x%lx foffs 0x%lx\n",
                 phdr->p_paddr, phdr->p_vaddr, phdr->p_filesz, phdr->p_offset);
 #endif
     }
     h->entry = ehdr.e_entry;
-    h->length = ret;
+    h->va = beg;
+    h->length = end - beg;
     return h;
 }
 
@@ -103,6 +107,12 @@ static uint32_t get_elf_entry(void *handle)
 {
     struct elf_h *h = handle;
     return h->entry;
+}
+
+static uint32_t get_elf_va(void *handle)
+{
+    struct elf_h *h = handle;
+    return h->va;
 }
 
 static void read_elf_sections(void *handle, char __far *ptr, int ifile,
@@ -135,6 +145,7 @@ static void read_elf_sections(void *handle, char __far *ptr, int ifile,
 
 struct ldops elf_ops = {
     read_elf_headers,
+    get_elf_va,
     get_elf_length,
     get_elf_entry,
     read_elf_sections,

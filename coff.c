@@ -131,6 +131,11 @@ static void *read_coff_headers(int ifile)
     return h;
 }
 
+static uint32_t get_coff_va(void *handle)
+{
+    return 0; // ???
+}
+
 static uint32_t get_coff_length(void *handle)
 {
     struct coff_h *h = handle;
@@ -156,6 +161,7 @@ static void read_coff_sections(void *handle, char __far *ptr, int ifile,
 
 struct ldops coff_ops = {
     read_coff_headers,
+    get_coff_va,
     get_coff_length,
     get_coff_entry,
     read_coff_sections,

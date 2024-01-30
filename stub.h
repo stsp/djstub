@@ -3,6 +3,7 @@
 
 struct ldops {
     void *(*read_headers)(int ifile);
+    uint32_t (*get_va)(void *handle);
     uint32_t (*get_length)(void *handle);
     uint32_t (*get_entry)(void *handle);
     void (*read_sections)(void *handle, char __far *ptr, int ifile,
