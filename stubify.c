@@ -71,6 +71,14 @@ static int copy_ovl(const char *ovl, int ofile)
   return ret;
 }
 
+static const char *payload_dsc[] = {
+  "32bit payload",
+  "64bit payload",
+  "debug info",
+};
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 static void coff2exe(char *fname, char *oname)
 {
   char ifilename[256];
@@ -135,6 +143,8 @@ static void coff2exe(char *fname, char *oname)
         if (rmstub || noverlay || strip)
           rmoverlay++;
 
+        if (info)
+          printf("dj64 file format\n");
         if (info || strip) {
           int cnt = 0;
           uint32_t sz = 0;
@@ -150,13 +160,11 @@ static void coff2exe(char *fname, char *oname)
             }
             sz = sz0;
             if (info)
-              printf("Overlay %i at %i, size %i\n", cnt, offs, sz);
+              printf("Overlay %i (%s) at %i, size %i\n", cnt,
+                  cnt < ARRAY_SIZE(payload_dsc) ? payload_dsc[cnt] : "???",
+                  offs, sz);
             offs += sz;
             cnt++;
-          }
-          if (info) {
-            close(ifile);
-            return;
           }
         }
       }
@@ -164,6 +172,8 @@ static void coff2exe(char *fname, char *oname)
       {
         int blocks = (unsigned char)buf[4] + (unsigned char)buf[5] * 256;
         int partial = (unsigned char)buf[2] + (unsigned char)buf[3] * 256;
+        if (info)
+          printf("exe/djgpp file format\n");
         coffset += blocks * 512;
         if (partial)
           coffset += partial - 512;
@@ -171,11 +181,15 @@ static void coff2exe(char *fname, char *oname)
     }
     else if (buf[0] == 0x4c && buf[1] == 0x01) /* it's a COFF */
     {
+      if (info)
+        printf("COFF payload at %li\n", coffset);
       break;
     }
     else if (buf[0] == 0x7f && buf[1] == 0x45 &&
                 buf[2] == 0x4c && buf[3] == 0x46) /* it's an ELF */
     {
+      if (info)
+        printf("ELF payload at %li\n", coffset);
       break;
     }
     else
@@ -213,7 +227,6 @@ static void coff2exe(char *fname, char *oname)
   }
 
   if (info) {
-    printf("wrong file format\n");
     close(ifile);
     return;
   }
