@@ -73,9 +73,9 @@ static int copy_ovl(const char *ovl, int ofile)
 }
 
 static const char *payload_dsc[] = {
-  "32bit payload",
-  "%s/ELF payload",
-  "%s/ELF debug info",
+  "%s DOS payload",
+  "%s/ELF host payload",
+  "%s/ELF host debug info",
 };
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -135,6 +135,10 @@ static const char *identify(int num, int fd, long offs)
 
 static void coff2exe(char *fname, char *oname)
 {
+  char ibuf[1024], ibuf0[256];
+  int has_o0 = 0;
+#define IPRINTF(...) \
+    snprintf(ibuf + strlen(ibuf), sizeof(ibuf) - strlen(ibuf), __VA_ARGS__)
   char ifilename[256];
   char ofilename[256];
   int ifile;
@@ -149,6 +153,8 @@ static void coff2exe(char *fname, char *oname)
   int can_copy_ovl = 0;
   int i;
 
+  ibuf[0] = '\0';
+  ibuf0[0] = '\0';
   strcpy(ifilename, fname);
   strcpy(ofilename, oname);
   ofext = 0;
@@ -198,7 +204,7 @@ static void coff2exe(char *fname, char *oname)
           rmoverlay++;
 
         if (info)
-          printf("dj64 file format\n");
+          strcat(ibuf, "dj64 file format\n");
         if (info || strip) {
           int cnt = 0;
           uint32_t sz = 0;
@@ -213,8 +219,10 @@ static void coff2exe(char *fname, char *oname)
               break;
             }
             sz = sz0;
+            if (!cnt)
+              has_o0++;
             if (info)
-              printf("Overlay %i (%s) at %i, size %i\n", cnt,
+              IPRINTF("Overlay %i (%s) at %i, size %i\n", cnt,
                   identify(cnt, ifile, offs),
                   offs, sz);
             offs += sz;
@@ -227,7 +235,7 @@ static void coff2exe(char *fname, char *oname)
         int blocks = (unsigned char)buf[4] + (unsigned char)buf[5] * 256;
         int partial = (unsigned char)buf[2] + (unsigned char)buf[3] * 256;
         if (info)
-          printf("exe/djgpp file format\n");
+          strcat(ibuf, "exe/djgpp file format\n");
         coffset += blocks * 512;
         if (partial)
           coffset += partial - 512;
@@ -235,15 +243,23 @@ static void coff2exe(char *fname, char *oname)
     }
     else if (buf[0] == 0x4c && buf[1] == 0x01) /* it's a COFF */
     {
-      if (info)
-        printf("COFF payload at %li\n", coffset);
+      if (info) {
+        if (has_o0)
+          strcpy(ibuf0, "i386/COFF");
+        else
+          IPRINTF("COFF payload at %li\n", coffset);
+      }
       break;
     }
     else if (buf[0] == 0x7f && buf[1] == 0x45 &&
                 buf[2] == 0x4c && buf[3] == 0x46) /* it's an ELF */
     {
-      if (info)
-        printf("ELF payload for %s at %li\n", elf_id(ifile, coffset), coffset);
+      if (info) {
+        if (has_o0)
+          snprintf(ibuf0, sizeof(ibuf0), "%s/ELF", elf_id(ifile, coffset));
+        else
+          IPRINTF("ELF payload for %s at %li\n", elf_id(ifile, coffset), coffset);
+      }
       break;
     }
     else
@@ -281,6 +297,10 @@ static void coff2exe(char *fname, char *oname)
   }
 
   if (info) {
+    if (has_o0)
+      printf(ibuf, ibuf0);
+    else
+      printf("%s", ibuf);
     close(ifile);
     return;
   }
