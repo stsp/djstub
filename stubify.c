@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <assert.h>
+#include "elf.h"
 
 extern char _binary_stub_exe_end[];
 extern char _binary_stub_exe_size[];
@@ -73,11 +74,64 @@ static int copy_ovl(const char *ovl, int ofile)
 
 static const char *payload_dsc[] = {
   "32bit payload",
-  "64bit payload",
-  "debug info",
+  "%s/ELF payload",
+  "%s/ELF debug info",
 };
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
+static const char *elf_mach(int mach)
+{
+  switch (mach) {
+    case EM_386:
+      return "i386";
+    case EM_X86_64:
+      return "x86_64";
+    case EM_ARM:
+      return "arm32";
+    case EM_AARCH64:
+      return "aarch64";
+    case EM_RISCV:
+      return "risc-v";
+  }
+  return "unsupported ELF machine type";
+}
+
+static const char *elf_id(int fd, long offs)
+{
+  Elf64_Ehdr ehdr;
+  unsigned char *buf = (unsigned char *)&ehdr;
+  int rd = pread(fd, buf, sizeof(ehdr), offs);
+  if (rd != sizeof(ehdr))
+    return "???";
+  if (memcmp(buf, ELFMAG, SELFMAG) != 0)
+    return "not an ELF";
+  switch (buf[EI_CLASS]) {
+    case ELFCLASS32: {
+      Elf32_Ehdr ehdr32;
+      memcpy(&ehdr32, buf, sizeof(ehdr32));
+      return elf_mach(ehdr32.e_machine);
+    }
+    case ELFCLASS64:
+      return elf_mach(ehdr.e_machine);
+  }
+  return "unsupported ELF class";
+}
+
+static const char *identify(int num, int fd, long offs)
+{
+  switch (num) {
+    case 0:
+      return payload_dsc[num];
+    case 1:
+    case 2: {
+      static char ret[256];
+      snprintf(ret, sizeof(ret), payload_dsc[num], elf_id(fd, offs));
+      return ret;
+    }
+  }
+  return "???";
+}
 
 static void coff2exe(char *fname, char *oname)
 {
@@ -161,7 +215,7 @@ static void coff2exe(char *fname, char *oname)
             sz = sz0;
             if (info)
               printf("Overlay %i (%s) at %i, size %i\n", cnt,
-                  cnt < ARRAY_SIZE(payload_dsc) ? payload_dsc[cnt] : "???",
+                  identify(cnt, ifile, offs),
                   offs, sz);
             offs += sz;
             cnt++;
@@ -189,7 +243,7 @@ static void coff2exe(char *fname, char *oname)
                 buf[2] == 0x4c && buf[3] == 0x46) /* it's an ELF */
     {
       if (info)
-        printf("ELF payload at %li\n", coffset);
+        printf("ELF payload for %s at %li\n", elf_id(ifile, coffset), coffset);
       break;
     }
     else
