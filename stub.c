@@ -237,7 +237,7 @@ int main(int argc, char *argv[], char *envp[])
     strncpy(stubinfo.argv0, _basename(argv0), sizeof(stubinfo.argv0));
     stubinfo.argv0[sizeof(stubinfo.argv0) - 1] = '\0';
     strncpy(stubinfo.basename, _fname(argv0), sizeof(stubinfo.basename));
-    stubinfo.basename[sizeof(stubinfo.basename) - 1] = '\0';
+//    stubinfo.basename[sizeof(stubinfo.basename) - 1] = '\0';
     strncpy(stubinfo.dpmi_server, "CWSDPMI.EXE", sizeof(stubinfo.dpmi_server));
 #define max(a, b) ((a) > (b) ? (a) : (b))
     stubinfo.initial_size = max(va_size, 0x10000);
