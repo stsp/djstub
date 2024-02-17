@@ -21,7 +21,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdint.h>
-#include <ctype.h>
 #include <fcntl.h>
 #include <dos.h>
 #include <dpmi.h>
@@ -160,7 +159,6 @@ int main(int argc, char *argv[], char *envp[])
     void *handle;
     struct ldops *ops = NULL;
     char *argv0 = strdup(argv[0]);
-    char *p;
 
     if (argc == 0) {
         fprintf(stderr, "no env\n");
@@ -195,6 +193,7 @@ int main(int argc, char *argv[], char *envp[])
             if (nsize)
                 noffset2 = noffset + nsize;
             memcpy(&nsize2, &buf[0x24], sizeof(nsize2));
+            strncpy(stubinfo.payload2_name, &buf[0x30], 12);
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
             ops = &coff_ops;
@@ -342,10 +341,8 @@ int main(int argc, char *argv[], char *envp[])
     stubinfo.payload_size = nsize;
     stubinfo.payload2_offs = noffset2;
     stubinfo.payload2_size = nsize2;
-    strcpy(stubinfo.payload2_name, stubinfo.argv0);
-    for (p = stubinfo.payload2_name; *p; p++)
-        *p = tolower(*p);
-    strcat(stubinfo.payload2_name, ".dbg");
+    if (stubinfo.payload2_name[0])
+        strcat(stubinfo.payload2_name, ".dbg");
     lseek(ifile, noffset, SEEK_SET);
     if (nsize > 0)
         stub_debug("Found payload of size %li at 0x%lx\n", nsize, noffset);

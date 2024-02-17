@@ -44,6 +44,7 @@ static int rmstub;
 #define MAX_OVL 5
 static char *overlay[MAX_OVL];
 static int noverlay;
+static const char *ovname;
 static int info;
 static int strip;
 
@@ -208,7 +209,7 @@ static void coff2exe(char *fname, char *oname)
         if (info || strip) {
           int cnt = 0;
           uint32_t sz = 0;
-          for (i = 0x1c; i < 0x40; i += 4) {
+          for (i = 0x1c; i < 0x30; i += 4) {
             uint32_t sz0;
             memcpy(&sz0, &buf[i], sizeof(sz0));
             if (!sz0) {
@@ -229,6 +230,8 @@ static void coff2exe(char *fname, char *oname)
             cnt++;
           }
         }
+        if (info && buf[0x30])
+          IPRINTF("Overlay name: %.12s\n", buf + 0x30);
       }
       else
       {
@@ -295,6 +298,8 @@ static void coff2exe(char *fname, char *oname)
     memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
           sizeof(coff_file_size));
   }
+  if (ovname)
+    strncpy(_binary_stub_exe_start + 0x30, ovname, 12);  // no 0-terminator
 
   if (info) {
     if (has_o0)
@@ -380,6 +385,7 @@ static void print_help(void)
 	  "-s -> strip last overlay\n"
 	  "-r -> remove stub (and overlay, if any)\n"
 	  "-l <file_name> -> link in <file_name> file as an overlay\n"
+	  "-n <name> -> write <name> into an overlay info\n"
 	  "-g <file_name> -> write a stub alone into a file\n"
 	  "\nNote: -g is useful only for debugging, as the stub is being\n"
 	  "customized for a particular program and its overlay.\n"
@@ -392,7 +398,7 @@ int main(int argc, char **argv)
   char *oname = NULL;
   int c;
 
-  while ((c = getopt(argc, argv, "virsg:l:o:")) != -1)
+  while ((c = getopt(argc, argv, "virsg:l:o:n:")) != -1)
   {
     switch (c) {
     case 'v':
@@ -413,6 +419,9 @@ int main(int argc, char **argv)
     case 'l':
       assert(noverlay < MAX_OVL);
       overlay[noverlay++] = optarg;
+      break;
+    case 'n':
+      ovname = optarg;
       break;
     case 'o':
       oname = optarg;
