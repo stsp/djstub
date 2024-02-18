@@ -194,6 +194,7 @@ int main(int argc, char *argv[], char *envp[])
                 noffset2 = noffset + nsize;
             memcpy(&nsize2, &buf[0x24], sizeof(nsize2));
             strncpy(stubinfo.payload2_name, &buf[0x30], 12);
+            stubinfo.payload2_name[12] = '\0';
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
             ops = &coff_ops;
