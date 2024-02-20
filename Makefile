@@ -11,14 +11,17 @@ OBJECTS = $(CFILES:.c=.o)
 
 all: $(PROG)
 
-.INTERMEDIATE: stub.exe
-
 $(OBJECTS): $(CFILES) $(wildcard *.h)
 
+ifneq ($(shell $(CC) --version 2>/dev/null),)
 stub.exe: $(OBJECTS)
 	$(CC) $^ $(LDFLAGS) -o _$@
 	lfanew -o $@ _$@
 	rm _$@
+else
+stub.exe: binstub/stub.exe
+	cp $< $@
+endif
 
 binstub.o: stub.exe
 	$(OBJCOPY) -I binary -O $(O_BDFARCH) \
