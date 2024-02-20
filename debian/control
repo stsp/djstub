@@ -4,11 +4,8 @@ Priority: optional
 Maintainer: Stas Sergeev <stsp@users.sourceforge.net>
 Standards-Version: 3.9.7
 Build-Depends:
-    lfanew,
     make,
-    gcc-ia16-elf,
-    libi86-ia16-elf,
-    causeway-dosx,
+    gcc,
     debhelper (>= 9~)
 Homepage: https://github.com/stsp/djstub
 
