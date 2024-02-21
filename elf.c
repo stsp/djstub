@@ -135,9 +135,11 @@ static void read_elf_sections(void *handle, char __far *ptr, int ifile,
                     phdr->p_filesz, bytes);
             _exit(EXIT_FAILURE);
         }
-        if (phdr->p_memsz > phdr->p_filesz)
-            farmemset(ptr, phdr->p_vaddr + phdr->p_filesz, 0,
-                    phdr->p_memsz - phdr->p_filesz);
+        if (phdr->p_memsz > phdr->p_filesz) {
+            uint32_t len = phdr->p_memsz - phdr->p_filesz;
+            len += len & 1;  // word-align
+            farmemset(ptr, phdr->p_vaddr + phdr->p_filesz, 0, len);
+        }
     }
     free(h);
 }

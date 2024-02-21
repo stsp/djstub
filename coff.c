@@ -154,7 +154,8 @@ static void read_coff_sections(void *handle, char __far *ptr, int ifile,
     struct coff_h *h = handle;
     read_section(ptr, ifile, offset, SCT_TEXT);
     read_section(ptr, ifile, offset, SCT_DATA);
-    farmemset(ptr, scns[SCT_BSS].s_vaddr, 0, scns[SCT_BSS].s_size);
+    farmemset(ptr, scns[SCT_BSS].s_vaddr, 0, scns[SCT_BSS].s_size +
+        (scns[SCT_BSS].s_size & 1));
     free(h);
 }
 
