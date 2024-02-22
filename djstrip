@@ -1,3 +1,5 @@
+#!/bin/sh
+
 if [ -z "$1" ]; then
   echo "Usage: djstrip <file_name>"
   exit 0
