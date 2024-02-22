@@ -1,0 +1,38 @@
+#
+# spec file for package djstub
+#
+
+Name: {{{ git_dir_name }}}
+Version: {{{ git_dir_version }}}
+Release: 1%{?dist}
+Summary: advanced djgpp-compatible stub
+
+Group: Development/Tools
+
+License: GPLv3+
+URL: https://github.com/stsp/djstub
+VCS: {{{ git_dir_vcs }}}
+Source0: {{{ git_dir_archive }}}
+
+BuildRequires: make
+BuildRequires: gcc
+BuildRequires: binutils
+
+%description
+djstub is a go32-compatible stub, with support of COFF, PE and ELF formats.
+Can be used with djgpp and dj64 tool-chains.
+
+%prep
+{{{ git_dir_setup_macro }}}
+
+%build
+make
+
+%check
+
+%install
+make install DESTDIR=%{buildroot} PREFIX=%{_prefix}
+
+%files
+%defattr(-,root,root)
+%{_bindir}/*
