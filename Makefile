@@ -1,30 +1,21 @@
-CC = ia16-elf-gcc
-CFLAGS = -mcmodel=small -mdosx32 -Os -Wall
-LDFLAGS = -mcmodel=small -mdosx32 -li86
 OBJCOPY = objcopy
-O_BDFARCH=$(shell $(OBJCOPY) --info | head -n 2 | tail -n 1)
+O_BFDARCH=$(shell $(OBJCOPY) --info | head -n 2 | tail -n 1)
 PROG = djstubify
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
-CFILES = stub.c coff.c elf.c util.c
-OBJECTS = $(CFILES:.c=.o)
 
-all: $(PROG)
+all: mini $(PROG)
 
-$(OBJECTS): $(CFILES) $(wildcard *.h)
+.PHONY: mini
 
-ifneq ($(shell $(CC) --version 2>/dev/null),)
-stub.exe: $(OBJECTS)
-	$(CC) $^ $(LDFLAGS) -o _$@
-	lfanew -o $@ _$@
-	rm _$@
-else
-stub.exe: binstub/stub.exe
-	cp $< $@
-endif
+mini:
+	$(MAKE) -C mini
+
+stub.exe: mini/ministub.exe
+	cp mini/ministub.exe $@
 
 binstub.o: stub.exe
-	$(OBJCOPY) -I binary -O $(O_BDFARCH) \
+	$(OBJCOPY) -I binary -O $(O_BFDARCH) \
 		--add-section .note.GNU-stack=/dev/null $< $@
 
 $(PROG): stubify.o binstub.o
@@ -46,4 +37,5 @@ deb:
 	debuild -i -us -uc -b
 
 clean:
+	$(MAKE) -C mini clean
 	rm -f *.o stub.exe $(PROG)
