@@ -17,6 +17,7 @@ Source0: {{{ git_dir_archive }}}
 BuildRequires: make
 BuildRequires: gcc
 BuildRequires: binutils
+BuildRequires: smallerc
 
 %description
 djstub is a go32-compatible stub, with support of COFF, PE and ELF formats.
