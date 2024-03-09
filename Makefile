@@ -4,11 +4,11 @@ PROG = djstubify
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 
-all: mini $(PROG)
+all:
+	$(MAKE) -C mini
+	$(MAKE) $(PROG)
 
-.PHONY: mini
-
-mini:
+mini/ministub.exe:
 	$(MAKE) -C mini
 
 stub.exe: mini/ministub.exe
