@@ -17,6 +17,30 @@
  *
  */
 #include <stdio.h>
+#include <string.h>
+
+typedef struct
+{
+  unsigned long  edi;
+  unsigned long  esi;
+  unsigned long  ebp;
+  unsigned long  resrvd;
+  unsigned long  ebx;
+  unsigned long  edx;
+  unsigned long  ecx;
+  unsigned long  eax;
+  unsigned short flags;
+  unsigned short es;
+  unsigned short ds;
+  unsigned short fs;
+  unsigned short gs;
+  unsigned short ip;
+  unsigned short cs;
+  unsigned short sp;
+  unsigned short ss;
+} __dpmi_int_regs;
+
+int __dpmi_int(int intno, __dpmi_int_regs* regs);
 
 int DPMIQueryExtension(unsigned short *sel, unsigned short *off,
     const char *name)
@@ -63,6 +87,7 @@ int main(int argc, char *argv[])
   unsigned short sel, off;
   int envc, i, letter;
   int err;
+  __dpmi_int_regs regs;
 
   if (argc == 0) {
     puts("no env");
@@ -119,6 +144,12 @@ int main(int argc, char *argv[])
     printf("%s unsupported (%x)\n", ext_nm, err);
     return 1;
   }
+  memset(&regs, 0, sizeof(regs));
+  /* nuke out initial stub as it is no longer needed */
+  regs.eax = 0x4a00;
+  regs.ebx = 0x10;  // leave only PSP
+  regs.es = (unsigned)__dpmi_psp >> 4;
+  __dpmi_int(0x21, &regs);
   enter_stub(sel, off, argc, argv, envc, envp, psp);
   puts("stub returned");
   return 0;
