@@ -153,7 +153,7 @@ static void coff2exe(char *fname, char *oname)
   int rmoverlay = 0;
   int can_copy_ovl = 0;
   int i;
-  const uint32_t stub_size = (uintptr_t)_binary_stub_exe_size;
+  const unsigned int stub_size = _binary_stub_exe_end - _binary_stub_exe_start;
 
   ibuf[0] = '\0';
   ibuf0[0] = '\0';
