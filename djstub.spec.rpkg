@@ -18,7 +18,6 @@ BuildRequires: make
 BuildRequires: gcc
 BuildRequires: binutils
 BuildRequires: smallerc
-BuildRequires: lfanew
 
 %description
 djstub is a go32-compatible stub, with support of COFF, PE and ELF formats.
