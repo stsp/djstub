@@ -11,9 +11,7 @@ endif
 all: ministub.exe
 
 ministub.exe: ministub.c
-	$(P) $(CC) $(SMFLAGS) $< -o _$@
-	lfanew -o $@ _$@
-	rm _$@
+	$(P) $(CC) $(SMFLAGS) $< -o $@
 
 clean:
 	$(RM) ministub.exe
