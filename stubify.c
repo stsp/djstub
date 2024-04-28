@@ -147,12 +147,13 @@ static void coff2exe(char *fname, char *oname)
   char *ofname, *ofext;
   char buf[4096];
   int rbytes, used_temp = 0;
-  long coffset=0;
+  long coffset = 0;
   unsigned char mzhdr_buf[0x40];
   uint32_t coff_file_size = 0;
   int rmoverlay = 0;
   int can_copy_ovl = 0;
   int i;
+  const uint32_t stub_size = (uintptr_t)_binary_stub_exe_size;
 
   ibuf[0] = '\0';
   ibuf0[0] = '\0';
@@ -300,6 +301,7 @@ static void coff2exe(char *fname, char *oname)
   }
   if (ovname)
     strncpy(_binary_stub_exe_start + 0x30, ovname, 12);  // no 0-terminator
+  memcpy(_binary_stub_exe_start + 0x3c, &stub_size, sizeof(stub_size));
 
   if (info) {
     if (has_o0)
