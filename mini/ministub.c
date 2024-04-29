@@ -18,6 +18,12 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+
+#define SHM_NOEXEC 1
+#define SHM_EXCL   2
+#define SHM_NEW_NS 4
+#define SHM_NS     8
 
 typedef struct
 {
@@ -60,7 +66,8 @@ int DPMIQueryExtension(unsigned short *sel, unsigned short *off,
 }
 
 static void enter_stub(unsigned sel, unsigned off,
-    int argc, char *argv[], int envc, char *envp[], unsigned psp)
+    int argc, char *argv[], int envc, char *envp[], unsigned psp,
+    unsigned flags)
 {
   asm(
     "mov eax, [ebp+32]\n"    // psp
@@ -68,6 +75,7 @@ static void enter_stub(unsigned sel, unsigned off,
     "mov edx, [ebp+20]\n"    // argv
     "mov ebx, [ebp+24]\n"    // envc
     "mov esi, [ebp+28]\n"    // envp
+    "mov edi, [ebp+36]\n"    // flags
     "push dword [ebp+8]\n "  // sel
     "push dword [ebp+12]\n"  // off
     "call far [ss:esp]\n"
@@ -88,6 +96,8 @@ int main(int argc, char *argv[])
   int envc, i, letter;
   int err;
   __dpmi_int_regs regs;
+  uint8_t shm_f0 = SHM_NOEXEC | SHM_EXCL | SHM_NEW_NS;
+  uint8_t shm_f1 = SHM_NOEXEC | SHM_EXCL | SHM_NS;
 
   if (argc == 0) {
     puts("no env");
@@ -150,7 +160,7 @@ int main(int argc, char *argv[])
   regs.ebx = 0x10;  // leave only PSP
   regs.es = (unsigned)__dpmi_psp >> 4;
   __dpmi_int(0x21, &regs);
-  enter_stub(sel, off, argc, argv, envc, envp, psp);
+  enter_stub(sel, off, argc, argv, envc, envp, psp, shm_f0 | (shm_f1 << 8));
   puts("stub returned");
   return 0;
 }
