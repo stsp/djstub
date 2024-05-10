@@ -47,6 +47,7 @@ static int noverlay;
 static const char *ovname;
 static int info;
 static int strip;
+static uint32_t stub_flags;
 
 static int copy_ovl(const char *ovl, int ofile)
 {
@@ -299,6 +300,7 @@ static void coff2exe(char *fname, char *oname)
     memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
           sizeof(coff_file_size));
   }
+  memcpy(_binary_stub_exe_start + 0x2c, &stub_flags, sizeof(stub_flags));
   if (ovname)
     strncpy(_binary_stub_exe_start + 0x30, ovname, 12);  // no 0-terminator
   memcpy(_binary_stub_exe_start + 0x3c, &stub_size, sizeof(stub_size));
@@ -388,6 +390,7 @@ static void print_help(void)
 	  "-r -> remove stub (and overlay, if any)\n"
 	  "-l <file_name> -> link in <file_name> file as an overlay\n"
 	  "-n <name> -> write <name> into an overlay info\n"
+	  "-f <flags> -> write <flags> into an overlay info\n"
 	  "-g <file_name> -> write a stub alone into a file\n"
 	  "\nNote: -g is useful only for debugging, as the stub is being\n"
 	  "customized for a particular program and its overlay.\n"
@@ -400,7 +403,7 @@ int main(int argc, char **argv)
   char *oname = NULL;
   int c;
 
-  while ((c = getopt(argc, argv, "virsg:l:o:n:")) != -1)
+  while ((c = getopt(argc, argv, "virsg:l:o:n:f:")) != -1)
   {
     switch (c) {
     case 'v':
@@ -424,6 +427,9 @@ int main(int argc, char **argv)
       break;
     case 'n':
       ovname = optarg;
+      break;
+    case 'f':
+      stub_flags = strtol(optarg, NULL, 0);
       break;
     case 'o':
       oname = optarg;
