@@ -153,7 +153,7 @@ static void coff2exe(char *fname, char *oname)
   int rmoverlay = 0;
   int can_copy_ovl = 0;
   int i;
-  const unsigned int stub_size = _binary_stub_exe_end - _binary_stub_exe_start;
+  const uint32_t stub_size = _binary_stub_exe_end - _binary_stub_exe_start;
 
   ibuf[0] = '\0';
   ibuf0[0] = '\0';
@@ -194,7 +194,7 @@ static void coff2exe(char *fname, char *oname)
     read(ifile, buf, 0x40);
     if (buf[0] == 'M' && buf[1] == 'Z') /* stubbed already, skip stub */
     {
-      if (buf[8] == 4)  // lfanew
+      if (buf[8] == 4 && buf[9] == 0)  // lfanew
       {
         uint32_t offs;
         memcpy(&offs, &buf[0x3c], sizeof(offs));
