@@ -12,6 +12,6 @@ Homepage: https://github.com/stsp/djstub
 
 Package: djstub
 Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}, bash
 Description: advanced djgpp-compatible stub subsystem
  go32-compatible stub, with support of COFF, PE and ELF formats.

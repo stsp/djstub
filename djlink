@@ -1,0 +1,42 @@
+#!/bin/bash
+
+if [ "$#" -lt 1 ]; then
+  echo "Usage: djlink [-d <debug_name>] <solib_name> [<djstubify_opts>]"
+  exit 0
+fi
+while getopts "d:" opt; do
+  case "$opt" in
+    d)
+      D="$OPTARG"
+      ;;
+    \?)
+      exit 1
+      ;;
+  esac
+done
+shift $(($OPTIND-1))
+SO=$1
+shift
+if [ ! -f "$SO" ]; then
+  echo "file $SO missing"
+  exit 1
+fi
+
+if [ -n "$D" ]; then
+  DBG="/tmp/$D"
+  objcopy --only-keep-debug $SO $DBG
+  TMP=$(mktemp)
+  strip -o $TMP $SO
+  objcopy --add-gnu-debuglink=$DBG $TMP
+  SO=$TMP
+  DOPT="-l $DBG"
+fi
+
+CMD="djstubify -l $SO $DOPT $@"
+#echo "$CMD"
+$CMD
+
+[ -z "$TMP" ] || rm "$TMP"
+if [ -n "$DBG" -a -f "$DBG" ]; then
+  rm $DBG
+fi

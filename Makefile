@@ -28,6 +28,7 @@ install:
 	install -d $(DESTDIR)$(BINDIR)
 	install -m 0755 $(PROG) $(DESTDIR)$(BINDIR)
 	install -m 0755 djstrip $(DESTDIR)$(BINDIR)
+	install -m 0755 djlink $(DESTDIR)$(BINDIR)
 
 uninstall:
 	$(RM) $(DESTDIR)$(BINDIR)/$(PROG)
