@@ -47,7 +47,7 @@ static int noverlay;
 static const char *ovname;
 static int info;
 static int strip;
-static uint32_t stub_flags;
+static uint16_t stub_flags;
 
 static int copy_ovl(const char *ovl, int ofile)
 {
