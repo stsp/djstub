@@ -48,6 +48,7 @@ static const char *ovname;
 static int info;
 static int strip;
 static uint16_t stub_flags;
+static const uint8_t stub_ver = 4;
 
 static int copy_ovl(const char *ovl, int ofile)
 {
@@ -301,8 +302,11 @@ static void coff2exe(char *fname, char *oname)
           sizeof(coff_file_size));
   }
   memcpy(_binary_stub_exe_start + 0x2c, &stub_flags, sizeof(stub_flags));
-  if (ovname)
-    strncpy(_binary_stub_exe_start + 0x30, ovname, 12);  // no 0-terminator
+  if (ovname) {
+    strncpy(_binary_stub_exe_start + 0x2e, ovname, 12);
+    _binary_stub_exe_start[0x2e + 12] = '\0';
+  }
+  _binary_stub_exe_start[0x3b] = stub_ver;
   memcpy(_binary_stub_exe_start + 0x3c, &stub_size, sizeof(stub_size));
 
   if (info) {
