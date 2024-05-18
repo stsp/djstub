@@ -18,11 +18,15 @@ shift $(($OPTIND-1))
 SO=$1
 shift
 if [ ! -f "$SO" ]; then
-  echo "file $SO missing"
+  echo "$0: file $SO missing"
   exit 1
 fi
 
 if [ -n "$D" ]; then
+  if [ -z "`readelf -S $SO | grep .debug_info`" ]; then
+    echo "$0: -d is specified but $SO is stripped"
+    exit 1
+  fi
   DBG="/tmp/$D"
   objcopy --only-keep-debug $SO $DBG
   TMP=$(mktemp)
