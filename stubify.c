@@ -233,8 +233,13 @@ static void coff2exe(char *fname, char *oname)
             cnt++;
           }
         }
-        if (info && buf[0x30])
-          IPRINTF("Overlay name: %.12s\n", buf + 0x30);
+        if (info && buf[0x3b] >= 4 && buf[0x3b] < 0x20 && buf[0x2e]) {
+          uint16_t flags;
+          memcpy(&flags, buf + 0x2c, 2);
+          IPRINTF("Overlay name: %s\n", buf + 0x2e);
+          IPRINTF("Stub version: %i\n", buf[0x3b]);
+          IPRINTF("Stub flags: 0x%04x\n", flags);
+        }
       }
       else
       {
