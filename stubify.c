@@ -436,31 +436,32 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    err = coff2exe(argv[argc - 1], tmpl, info);
+    err = coff2exe(argv[argc - 1], oname ?: tmpl, info);
     if (err)
       return 1;
     if (info)
       return 0;
-    if (!oname)
+    if (!oname) {
       oname = argv[argc - 1];
-    err = rename(tmpl, oname);
-    if (err && errno == EXDEV) {
-      int fd = open(oname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-      if (fd == -1) {
-        perror("open()");
-        return 1;
+      err = rename(tmpl, oname);
+      if (err && errno == EXDEV) {
+        int fd = open(oname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd == -1) {
+          perror("open()");
+          return 1;
+        }
+        copy_file(tmpl, fd);
+        close(fd);
+        err = unlink(tmpl);
+        if (err) {
+          perror("unlink()");
+          return 1;
+        }
       }
-      copy_file(tmpl, fd);
-      close(fd);
-      err = unlink(tmpl);
       if (err) {
-        perror("unlink()");
+        perror("rename()");
         return 1;
       }
-    }
-    if (err) {
-      perror("rename()");
-      return 1;
     }
   }
 
