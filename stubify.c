@@ -135,7 +135,7 @@ static const char *identify(int num, int fd, long offs)
   return "???";
 }
 
-static int coff2exe(const char *fname, char *oname, int info)
+static int coff2exe(const char *fname, const char *oname, int info)
 {
   char ibuf[1024], ibuf0[256];
   int has_o0 = 0;
@@ -151,6 +151,7 @@ static int coff2exe(const char *fname, char *oname, int info)
   int rmoverlay = 0;
   int can_copy_ovl = 0;
   int i;
+  char tmpl[] = "/tmp/djstub_XXXXXX";
   const uint32_t stub_size = _binary_stub_exe_end - _binary_stub_exe_start;
 
   ibuf[0] = '\0';
@@ -295,11 +296,18 @@ static int coff2exe(const char *fname, char *oname, int info)
     return 0;
   }
 
-  ofile = mkstemp(oname);
-  if (ofile < 0)
-  {
-    perror("mkstemp()");
-    return -1;
+  if (oname) {
+    ofile = open(oname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (ofile < 0) {
+      perror("open()");
+      return -1;
+    }
+  } else {
+    ofile = mkstemp(tmpl);
+    if (ofile < 0) {
+      perror("mkstemp()");
+      return -1;
+    }
   }
 
   if (!rmstub)
@@ -339,6 +347,30 @@ static int coff2exe(const char *fname, char *oname, int info)
     }
   }
   close(ofile);
+
+  if (!oname) {
+    /* used tmp file */
+    int err = rename(tmpl, fname);
+    if (err && errno == EXDEV) {
+      int fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      if (fd == -1) {
+        perror("open()");
+        return -1;
+      }
+      copy_file(tmpl, fd);
+      close(fd);
+      err = unlink(tmpl);
+      if (err) {
+        perror("unlink()");
+        return -1;
+      }
+    }
+    if (err) {
+      perror("rename()");
+      return -1;
+    }
+  }
+
   return 0;
 }
 
@@ -427,7 +459,6 @@ int main(int argc, char **argv)
   }
   else
   {
-    char tmpl[] = "/tmp/djstub_XXXXXX";
     int err;
 
     if (argc < 2)
@@ -436,33 +467,9 @@ int main(int argc, char **argv)
       return 1;
     }
 
-    err = coff2exe(argv[argc - 1], oname ?: tmpl, info);
+    err = coff2exe(argv[argc - 1], oname, info);
     if (err)
       return 1;
-    if (info)
-      return 0;
-    if (!oname) {
-      oname = argv[argc - 1];
-      err = rename(tmpl, oname);
-      if (err && errno == EXDEV) {
-        int fd = open(oname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (fd == -1) {
-          perror("open()");
-          return 1;
-        }
-        copy_file(tmpl, fd);
-        close(fd);
-        err = unlink(tmpl);
-        if (err) {
-          perror("unlink()");
-          return 1;
-        }
-      }
-      if (err) {
-        perror("rename()");
-        return 1;
-      }
-    }
   }
 
   return 0;
