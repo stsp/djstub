@@ -205,13 +205,12 @@ static int coff2exe(const char *fname, char *oname, int info)
             offs += sz;
             cnt++;
           }
-        }
-        if (info && buf[0x3b] >= 4 && buf[0x3b] < 0x20 && buf[0x2e]) {
-          uint16_t flags;
-          memcpy(&flags, buf + 0x2c, 2);
-          IPRINTF("Overlay name: %s\n", buf + 0x2e);
-          IPRINTF("Stub version: %i\n", buf[0x3b]);
-          IPRINTF("Stub flags: 0x%04x\n", flags);
+          if (buf[0x3b] >= 4 && buf[0x3b] < 0x20 && buf[0x2e]) {
+            memcpy(&stub_flags, buf + 0x2c, 2);
+            IPRINTF("Overlay name: %s\n", buf + 0x2e);
+            IPRINTF("Stub version: %i\n", buf[0x3b]);
+            IPRINTF("Stub flags: 0x%04x\n", stub_flags);
+          }
         }
       }
       else
