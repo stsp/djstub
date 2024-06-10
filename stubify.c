@@ -45,12 +45,11 @@ static int rmstub;
 static char *overlay[MAX_OVL];
 static int noverlay;
 static const char *ovname;
-static int info;
 static int strip;
 static uint16_t stub_flags;
 static const uint8_t stub_ver = 4;
 
-static int copy_ovl(const char *ovl, int ofile)
+static int copy_file(const char *ovl, int ofile)
 {
   char buf[4096];
   int rbytes;
@@ -136,19 +135,16 @@ static const char *identify(int num, int fd, long offs)
   return "???";
 }
 
-static void coff2exe(char *fname, char *oname)
+static int coff2exe(const char *fname, char *oname, int info)
 {
   char ibuf[1024], ibuf0[256];
   int has_o0 = 0;
 #define IPRINTF(...) \
     snprintf(ibuf + strlen(ibuf), sizeof(ibuf) - strlen(ibuf), __VA_ARGS__)
-  char ifilename[256];
-  char ofilename[256];
   int ifile;
   int ofile;
-  char *ofname, *ofext;
   char buf[4096];
-  int rbytes, used_temp = 0;
+  int rbytes;
   long coffset = 0;
   unsigned char mzhdr_buf[0x40];
   uint32_t coff_file_size = 0;
@@ -159,35 +155,12 @@ static void coff2exe(char *fname, char *oname)
 
   ibuf[0] = '\0';
   ibuf0[0] = '\0';
-  strcpy(ifilename, fname);
-  strcpy(ofilename, oname);
-  ofext = 0;
-  for (ofname=ofilename; *ofname; ofname++)
-  {
-    if (strchr("/\\:", *ofname))
-      ofext = 0;
-    if (*ofname == '.')
-      ofext = ofname;
-  }
-  if (ofext == 0)
-    ofext = ofilename + strlen(ofilename);
-  strcpy(ofext, ".exe");
-  if (access(ofilename, 0) == 0)
-    for (ofile=0; ofile<999; ofile++)
-    {
-      used_temp = 1;
-      sprintf(ofext, ".%03d", ofile);
-      if (access(ofilename, 0))
-	break;
-    }
-  else
-    used_temp = 0;
 
-  ifile = open(ifilename, O_RDONLY);
+  ifile = open(fname, O_RDONLY);
   if (ifile < 0)
   {
-    perror(fname);
-    return;
+    perror("open()");
+    return -1;
   }
 
   while (1)
@@ -294,7 +267,7 @@ static void coff2exe(char *fname, char *oname)
         fprintf(stderr, "failed to stat %s: %s\n", overlay[i],
             strerror(errno));
         close(ifile);
-        return;
+        return -1;
       }
       memcpy(_binary_stub_exe_start + 0x20 + i * 4, &sb.st_size, 4);
     }
@@ -320,23 +293,15 @@ static void coff2exe(char *fname, char *oname)
     else
       printf("%s", ibuf);
     close(ifile);
-    return;
+    return 0;
   }
 
-  ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC, 0644);
+  ofile = mkstemp(oname);
   if (ofile < 0)
   {
-    perror(ofilename);
-    return;
+    perror("mkstemp()");
+    return -1;
   }
-  v_printf("stubify: %s -> %s", ifilename, ofilename);
-  if (used_temp)
-  {
-    strcpy(ifilename, ofilename);
-    strcpy(ofext, ".exe");
-    v_printf(" -> %s", ofilename);
-  }
-  v_printf("\n");
 
   if (!rmstub)
     write(ofile, _binary_stub_exe_start,
@@ -354,37 +319,28 @@ static void coff2exe(char *fname, char *oname)
       coff_file_size -= rbytes;
     if (wb != rbytes)
     {
-      perror(ofilename);
+      perror("write()");
       close(ifile);
       close(ofile);
-      unlink(ofilename);
-      exit(1);
+      unlink(oname);
+      return -1;
     }
   }
   close(ifile);
 
   for (i = 0; i < noverlay; i++)
   {
-    int rc = copy_ovl(overlay[i], ofile);
+    int rc = copy_file(overlay[i], ofile);
     if (rc < 0)
     {
-      perror(ofilename);
+      fprintf(stderr, "failed to copy overlays\n");
       close(ofile);
-      unlink(ofilename);
-      exit(1);
+      unlink(oname);
+      return -1;
     }
   }
   close(ofile);
-
-  if (used_temp)
-  {
-    unlink(ofilename);
-    if (rename(ifilename, ofilename))
-    {
-      fprintf(stderr, "rename of %s to %s failed.\n", ifilename, ofilename);
-      perror("The error was");
-    }
-  }
+  return 0;
 }
 
 static void print_help(void)
@@ -411,6 +367,7 @@ int main(int argc, char **argv)
 {
   char *generate = NULL;
   char *oname = NULL;
+  int info = 0;
   int c;
 
   while ((c = getopt(argc, argv, "virsg:l:o:n:f:")) != -1)
@@ -471,13 +428,41 @@ int main(int argc, char **argv)
   }
   else
   {
+    char tmpl[] = "/tmp/djstub_XXXXXX";
+    int err;
+
     if (argc < 2)
     {
       print_help();
       return 1;
     }
 
-    coff2exe(argv[argc - 1], oname ?: argv[argc - 1]);
+    err = coff2exe(argv[argc - 1], tmpl, info);
+    if (err)
+      return 1;
+    if (info)
+      return 0;
+    if (!oname)
+      oname = argv[argc - 1];
+    err = rename(tmpl, oname);
+    if (err && errno == EXDEV) {
+      int fd = open(oname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      if (fd == -1) {
+        perror("open()");
+        return 1;
+      }
+      copy_file(tmpl, fd);
+      close(fd);
+      err = unlink(tmpl);
+      if (err) {
+        perror("unlink()");
+        return 1;
+      }
+    }
+    if (err) {
+      perror("rename()");
+      return 1;
+    }
   }
 
   return 0;
