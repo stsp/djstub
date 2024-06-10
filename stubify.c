@@ -389,7 +389,7 @@ static void coff2exe(char *fname, char *oname)
 
 static void print_help(void)
 {
-  fprintf(stderr, "Usage: stubify [-v] [-l <overlay>] <program>\n\n"
+  fprintf(stderr, "Usage: stubify [-v] [-l <overlay>] [-o <out_file>] <program>\n\n"
 	  "<program> may be COFF or stubbed .exe, and may be COFF with .exe extension.\n"
 	  "Resulting file will have .exe\n\n"
 	  "Options:\n"
@@ -399,6 +399,7 @@ static void print_help(void)
 	  "-r -> remove stub (and overlay, if any)\n"
 	  "-l <file_name> -> link in <file_name> file as an overlay\n"
 	  "-n <name> -> write <name> into an overlay info\n"
+	  "-o <name> -> write output into <name>\n"
 	  "-f <flags> -> write <flags> into an overlay info\n"
 	  "-g <file_name> -> write a stub alone into a file\n"
 	  "\nNote: -g is useful only for debugging, as the stub is being\n"
