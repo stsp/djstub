@@ -454,26 +454,13 @@ int main(int argc, char **argv)
   v_printf("stubify for dj64 executables, copyright (C) 2023 stsp\n");
   if (generate)
   {
-    char ofilename[256], *ofname, *ofext=0;
     int ofile;
 
-    strcpy(ofilename, generate);
-    for (ofname=ofilename; *ofname; ofname++)
-    {
-      if (strchr("/\\:", *ofname))
-	ofext = 0;
-      if (*ofname == '.')
-	ofext = ofname;
-    }
-    if (ofext == 0)
-      ofext = ofilename + strlen(ofilename);
-    strcpy(ofext, ".exe");
-
-    ofile = open(ofilename, O_WRONLY|O_CREAT|O_TRUNC, 0666);
+    ofile = open(generate, O_WRONLY|O_CREAT|O_TRUNC, 0666);
     if (ofile < 0)
     {
       fprintf(stderr, "Cannot open output file to generate\n");
-      perror(ofilename);
+      perror("open()");
       return 1;
     }
     v_printf("stubify: generate %s\n", generate);
