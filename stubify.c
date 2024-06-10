@@ -396,7 +396,7 @@ int main(int argc, char **argv)
       ovname = optarg;
       break;
     case 'f':
-      stub_flags = strtol(optarg, NULL, 0);
+      stub_flags |= strtol(optarg, NULL, 0);
       break;
     case 'o':
       oname = optarg;
