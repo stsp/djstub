@@ -1,5 +1,8 @@
 OBJCOPY = objcopy
 O_BFDARCH=$(shell $(OBJCOPY) --info | head -n 2 | tail -n 1)
+ifeq ($(O_BFDARCH),)
+O_BFDARCH = elf64-x86-64
+endif
 PROG = djstubify
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
