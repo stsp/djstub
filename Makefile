@@ -1,5 +1,5 @@
 OBJCOPY = objcopy
-O_BFDARCH=$(shell $(OBJCOPY) --info | head -n 2 | tail -n 1)
+O_BFDARCH=$(shell $(OBJCOPY) --info 2>/dev/null | head -n 2 | tail -n 1)
 ifeq ($(O_BFDARCH),)
 O_BFDARCH = elf64-x86-64
 endif
