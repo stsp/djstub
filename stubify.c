@@ -22,6 +22,12 @@
 /* Copyright (C) 1999 DJ Delorie, see COPYING.DJ for details */
 /* Copyright (C) 1996 DJ Delorie, see COPYING.DJ for details */
 /* Copyright (C) 1995 DJ Delorie, see COPYING.DJ for details */
+/*
+ * Note: the previous copyrights are provided only to give credits
+ * to previous authors. This file was entirely rewritten and
+ * COPYING.DJ doesn't apply to this project.
+ * See LICENSE file for an actual license information.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
