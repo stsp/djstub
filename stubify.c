@@ -141,6 +141,30 @@ static const char *identify(int num, int fd, long offs)
   return "???";
 }
 
+static int move_tmp(const char *src, const char *dst)
+{
+  int err = rename(src, dst);
+  if (err && errno == EXDEV) {
+    int fd = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1) {
+      perror("open()");
+      return -1;
+    }
+    copy_file(src, fd);
+    close(fd);
+    err = unlink(src);
+    if (err) {
+      perror("unlink()");
+      return -1;
+    }
+  }
+  if (err) {
+    perror("rename()");
+    return -1;
+  }
+  return 0;
+}
+
 static int coff2exe(const char *fname, const char *oname, int info)
 {
   char ibuf[1024], ibuf0[256];
@@ -157,6 +181,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
   int rmoverlay = 0;
   int can_copy_ovl = 0;
   int i;
+  int ret = 0;
   char tmpl[] = "/tmp/djstub_XXXXXX";
   const uint32_t stub_size = _binary_stub_exe_end - _binary_stub_exe_start;
 
@@ -320,6 +345,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
     write(ofile, _binary_stub_exe_start,
         _binary_stub_exe_end-_binary_stub_exe_start);
 
+  /* copy either entire payload, or, in case of rmoverlay, only COFF */
   while (coff_file_size > 0 && (rbytes=read(ifile, buf, 4096)) > 0)
   {
     int wb;
@@ -354,30 +380,10 @@ static int coff2exe(const char *fname, const char *oname, int info)
   }
   close(ofile);
 
-  if (!oname) {
-    /* used tmp file */
-    int err = rename(tmpl, fname);
-    if (err && errno == EXDEV) {
-      int fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-      if (fd == -1) {
-        perror("open()");
-        return -1;
-      }
-      copy_file(tmpl, fd);
-      close(fd);
-      err = unlink(tmpl);
-      if (err) {
-        perror("unlink()");
-        return -1;
-      }
-    }
-    if (err) {
-      perror("rename()");
-      return -1;
-    }
-  }
+  if (!oname)
+    ret = move_tmp(tmpl, fname);
 
-  return 0;
+  return ret;
 }
 
 static void print_help(void)
