@@ -201,6 +201,15 @@ static int coff2exe(const char *fname, const char *oname, int info)
       if (buf[8] == 4 && buf[9] == 0)  // lfanew
       {
         uint32_t offs;
+        uint16_t flags = 0;
+        int dyn = 0;
+        int stub_v4 = (buf[0x3b] >= 4 && buf[0x3b] < 0x20);
+
+        if (stub_v4) {
+          memcpy(&flags, &buf[0x2c], sizeof(flags));
+          if (flags & 0x80)
+            dyn++;
+        }
         memcpy(&offs, &buf[0x3c], sizeof(offs));
         coffset = offs;
         memcpy(&coff_file_size, &buf[0x1c], sizeof(coff_file_size));
@@ -209,8 +218,11 @@ static int coff2exe(const char *fname, const char *oname, int info)
         if (rmstub || strip)
           rmoverlay++;
 
-        if (info)
+        if (info) {
           strcat(ibuf, "dj64 file format\n");
+          if (dyn)
+            strcat(ibuf, "DOS payload dynamic\n");
+        }
         if (info || strip) {
           int cnt = 0;
           uint32_t sz = 0;
@@ -229,15 +241,14 @@ static int coff2exe(const char *fname, const char *oname, int info)
               has_o0++;
             if (info)
               IPRINTF("Overlay %i (%s) at %i, size %i\n", cnt,
-                  identify(cnt, ifile, offs),
+                  identify(cnt + dyn, ifile, offs),
                   offs, sz);
             offs += sz;
             cnt++;
           }
-          if (buf[0x3b] >= 4 && buf[0x3b] < 0x20 && buf[0x2e]) {
-            uint16_t flags;
-            memcpy(&flags, buf + 0x2c, 2);
-            IPRINTF("Overlay name: %.12s\n", buf + 0x2e);
+          if (stub_v4) {
+            if (buf[0x2e])
+              IPRINTF("Overlay name: %.12s\n", buf + 0x2e);
             IPRINTF("Stub version: %i\n", buf[0x3b]);
             IPRINTF("Stub flags: 0x%04x\n", flags);
           }
