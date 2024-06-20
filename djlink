@@ -36,7 +36,7 @@ if [ -n "$D" ]; then
   DOPT="-l $DBG"
 fi
 
-CMD="djstubify -l $SO $DOPT $@"
+CMD="djstubify -g $* -l $SO $DOPT"
 #echo "$CMD"
 $CMD
 
