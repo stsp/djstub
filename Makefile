@@ -6,6 +6,7 @@ endif
 PROG = djstubify
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
+CFLAGS ?= -Wall -Og -g
 
 all:
 	$(MAKE) -C mini
@@ -22,10 +23,10 @@ binstub.o: stub.exe
 		--add-section .note.GNU-stack=/dev/null $< $@
 
 $(PROG): stubify.o binstub.o
-	cc -o $@ $^
+	$(CC) -o $@ $^
 
 stubify.o: stubify.c
-	cc -Wall $< -c -g -o $@
+	$(CC) $(CFLAGS) $< -c -o $@
 
 install:
 	install -d $(DESTDIR)$(BINDIR)
