@@ -8,25 +8,21 @@ PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 CFLAGS ?= -Wall -Og -g
 
-all:
-	$(MAKE) -C mini
-	$(MAKE) $(PROG)
+all: $(PROG)
 
-mini/ministub.exe:
+.PHONY: mini
+mini/ministub.exe: mini
 	$(MAKE) -C mini
 
 stub.exe: mini/ministub.exe
-	cp mini/ministub.exe $@
+	cp $< $@
 
 binstub.o: stub.exe
 	$(OBJCOPY) -I binary -O $(O_BFDARCH) \
 		--add-section .note.GNU-stack=/dev/null $< $@
 
 $(PROG): stubify.o binstub.o
-	$(CC) -o $@ $^
-
-stubify.o: stubify.c
-	$(CC) $(CFLAGS) $< -c -o $@
+	$(CC) $(LDFLAGS) -o $@ $^
 
 install:
 	install -d $(DESTDIR)$(BINDIR)
@@ -37,6 +33,7 @@ install:
 uninstall:
 	$(RM) $(DESTDIR)$(BINDIR)/$(PROG)
 	$(RM) $(DESTDIR)$(BINDIR)/djstrip
+	$(RM) $(DESTDIR)$(BINDIR)/djlink
 
 deb:
 	debuild -i -us -uc -b
