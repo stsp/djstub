@@ -22,8 +22,8 @@ Full stub requires
 to build, and is therefore currently not maintained.
 Mini stub uses [SmallerC](https://github.com/alexfru/SmallerC)
 and is actively maintained. If you want to use this
-project outside of dj64dev suite, you may need full
-stub. Otherwise, mini stub is enough.
+project outside of dosemu2 (which means djgpp + bare-metal DOS or windows),
+you may need full stub. Otherwise, mini stub is enough.
 
 ## usage examples
 ```
