@@ -6,9 +6,9 @@ suite, but it can also work with djgpp-built
 executables.
 
 ## what it does?
-- It can stubify or re-stub COFF and PE executables. See `djstubify` for that task.
-- It can link the ELF binaries into a dj64 executables. See `djlink` for that task.
-- It can strip the debug info from dj64 executables. See `djstrip` for that task.
+- It can stubify or re-stub COFF and PE executables. See `djstubify`.
+- It can link the ELF binaries into a dj64 executables. See `djlink`.
+- It can strip the debug info from dj64 executables. See `djstrip`.
 
 ## what stubs does it provide?
 There are 2 stubs available: [full](https://github.com/stsp/djstub/tree/main/full),
