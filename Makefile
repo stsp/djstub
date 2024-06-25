@@ -10,7 +10,7 @@ CFLAGS ?= -Wall -Og -g
 # set to mini or full
 STYPE = mini
 STUB = $(STYPE)stub.exe
-CFLAGS += \
+CPPFLAGS += \
   -D_binary_stub_exe_start=_binary_$(STYPE)stub_exe_start \
   -D_binary_stub_exe_end=_binary_$(STYPE)stub_exe_end \
   -D_binary_stub_exe_size=_binary_$(STYPE)stub_exe_size
