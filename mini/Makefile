@@ -1,3 +1,5 @@
+TOP = ..
+TGT = $(TOP)/ministub.exe
 CC = smlrcc
 SMFLAGS = -dosp
 
@@ -8,10 +10,9 @@ PATH=$(SMPATH):$(PATH)
 endef
 endif
 
-all: ministub.exe
+all: $(TGT)
 
-ministub.exe: ministub.c
+$(TGT): ministub.c
 	$(P) $(CC) $(SMFLAGS) $< -o $@
 
 clean:
-	$(RM) ministub.exe

@@ -7,17 +7,21 @@ PROG = djstubify
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
 CFLAGS ?= -Wall -Og -g
+# set to mini or full
+STYPE = mini
+STUB = $(STYPE)stub.exe
+CFLAGS += \
+  -D_binary_stub_exe_start=_binary_$(STYPE)stub_exe_start \
+  -D_binary_stub_exe_end=_binary_$(STYPE)stub_exe_end \
+  -D_binary_stub_exe_size=_binary_$(STYPE)stub_exe_size
 
 all: $(PROG)
 
-.PHONY: mini
-mini/ministub.exe: mini
-	$(MAKE) -C mini
+.PHONY: $(STYPE)
+$(STUB): $(STYPE)
+	$(MAKE) -C $<
 
-stub.exe: mini/ministub.exe
-	cp $< $@
-
-binstub.o: stub.exe
+binstub.o: $(STUB)
 	$(OBJCOPY) -I binary -O $(O_BFDARCH) \
 		--add-section .note.GNU-stack=/dev/null $< $@
 
@@ -39,5 +43,5 @@ deb:
 	debuild -i -us -uc -b
 
 clean:
-	$(MAKE) -C mini clean
-	rm -f *.o stub.exe $(PROG)
+	$(MAKE) -C $(STYPE) clean
+	rm -f *.o $(STUB) $(PROG)
