@@ -123,20 +123,20 @@ int main(int argc, char *argv[])
     }
   }
   asm(
-    "mov eax, 0\n"
-    "mov ecx, 1\n"
+    "mov eax, 0\n"    // alloc desc for PSP
+    "mov ecx, 1\n"    // 1 desc
     "int 31h\n"
     "mov [_psp], ax\n"
-    "mov eax, 7\n"
+    "mov eax, 7\n"    // set base
     "mov bx, [_psp]\n"
     "extern  ___dpmi_psp\n"
     "mov cx, [___dpmi_psp + 2]\n"
     "mov dx, [___dpmi_psp]\n"
     "int 31h\n"
-    "mov eax, 8\n"
+    "mov eax, 8\n"    // set limit
     "mov bx, [_psp]\n"
     "mov cx, 0\n"
-    "mov dx, 0ffh\n"
+    "mov dx, 0ffh\n"  // to PSP size
     "int 31h\n"
   );
   err = DPMIQueryExtension(&sel, &off, ext_nm);
