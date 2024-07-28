@@ -119,6 +119,7 @@ static const char *_basename(const char *name)
     return p;
 }
 
+#if 0
 static char *_fname(char *name)
 {
     char *p, *p1;
@@ -132,6 +133,7 @@ static char *_fname(char *name)
         p1[0] = '\0';
     return p;
 }
+#endif
 
 int main(int argc, char *argv[], char *envp[])
 {
@@ -158,7 +160,6 @@ int main(int argc, char *argv[], char *envp[])
     dpmi_dos_block db;
     void *handle;
     struct ldops *ops = NULL;
-    char *argv0 = strdup(argv[0]);
 
     if (argc == 0) {
         fprintf(stderr, "no env\n");
@@ -227,16 +228,16 @@ int main(int argc, char *argv[], char *envp[])
         envp++;
     }
     if (i) {
-        i += strlen(argv0) + 1;
-        i += 2;
+        i += strlen(argv[0]) + 1;
+        i += 3;
     }
     stub_debug("env size %i\n", i);
     stubinfo.env_size = i;
     stubinfo.minstack = 0x80000;
     stubinfo.minkeep = 0x4000;
-    strncpy(stubinfo.argv0, _basename(argv0), sizeof(stubinfo.argv0));
+    strncpy(stubinfo.argv0, _basename(argv[0]), sizeof(stubinfo.argv0));
     stubinfo.argv0[sizeof(stubinfo.argv0) - 1] = '\0';
-    strncpy(stubinfo.basename, _fname(argv0), sizeof(stubinfo.basename));
+//    strncpy(stubinfo.basename, _fname(argv0), sizeof(stubinfo.basename));
 //    stubinfo.basename[sizeof(stubinfo.basename) - 1] = '\0';
     strncpy(stubinfo.dpmi_server, "CWSDPMI.EXE", sizeof(stubinfo.dpmi_server));
 #define max(a, b) ((a) > (b) ? (a) : (b))
