@@ -392,6 +392,12 @@ int main(int argc, char **argv)
   const char *ovname = NULL;
   uint16_t stub_flags = 0;
 
+  if (_binary_stub_exe_start[0] != 'M' || _binary_stub_exe_start[1] != 'Z' ||
+        _binary_stub_exe_start[8] != 4 || _binary_stub_exe_start[9] != 0) {
+    fprintf(stderr, "stub corrupted, bad build\n");
+    return EXIT_FAILURE;
+  }
+
   while ((c = getopt(argc, argv, "virsgl:o:n:f:")) != -1)
   {
     switch (c) {
