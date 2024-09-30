@@ -1,3 +1,4 @@
+VER = 0.2
 OBJCOPY = objcopy
 O_BFDARCH=$(shell $(OBJCOPY) --info 2>/dev/null | head -n 2 | tail -n 1)
 ifeq ($(O_BFDARCH),)
@@ -13,7 +14,8 @@ STUB = $(STYPE)stub.exe
 CPPFLAGS += \
   -D_binary_stub_exe_start=_binary_$(STYPE)stub_exe_start \
   -D_binary_stub_exe_end=_binary_$(STYPE)stub_exe_end \
-  -D_binary_stub_exe_size=_binary_$(STYPE)stub_exe_size
+  -D_binary_stub_exe_size=_binary_$(STYPE)stub_exe_size \
+  -DVERSION=$(VER)
 
 all: $(PROG)
 

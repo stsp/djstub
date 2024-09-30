@@ -368,7 +368,8 @@ static void print_help(void)
   fprintf(stderr, "Usage: stubify [-v] [-l <overlay>] [-o <out_file>] <program>\n\n"
 	  "<program> may be COFF or stubbed .exe.\n\n"
 	  "Options:\n"
-	  "-v -> verbose\n"
+	  "-v -> print version\n"
+	  "-d -> verbose messages for debugging\n"
 	  "-i -> display file info\n"
 	  "-s -> strip last overlay\n"
 	  "-r -> remove stub (and overlay, if any)\n"
@@ -399,10 +400,15 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  while ((c = getopt(argc, argv, "vV:irsgl:o:n:f:")) != -1)
+  while ((c = getopt(argc, argv, "dvV:irsgl:o:n:f:")) != -1)
   {
     switch (c) {
     case 'v':
+#define _S(x) #x
+#define S(x) _S(x)
+      printf("djstubify version %s\n", S(VERSION));
+      return 0;
+    case 'd':
       verbose = 1;
       break;
     case 'i':
