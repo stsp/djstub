@@ -512,7 +512,7 @@ int main(int argc, char **argv)
   {
     int err;
 
-    if (argc < 2)
+    if (argc - optind < 1)
     {
       print_help();
       return 1;
