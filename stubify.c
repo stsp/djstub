@@ -50,7 +50,7 @@ static int rmstub;
 #define MAX_OVL 5
 static char *overlay[MAX_OVL];
 static int strip;
-static const uint8_t stub_ver = 4;
+static uint8_t stub_ver = 4;
 
 static int copy_file(const char *ovl, int ofile)
 {
@@ -376,6 +376,7 @@ static void print_help(void)
 	  "-n <name> -> write <name> into an overlay info\n"
 	  "-o <name> -> write output into <name>\n"
 	  "-f <flags> -> write <flags> into an overlay info\n"
+	  "-V <stub_ver> -> write <stub_ver> into stub version field\n"
 	  "-g -> generate a new file\n"
 	  "\nNote: -g is useful only for debugging, as the stub is being\n"
 	  "customized for a particular program and its overlay.\n"
@@ -398,7 +399,7 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  while ((c = getopt(argc, argv, "virsgl:o:n:f:")) != -1)
+  while ((c = getopt(argc, argv, "vV:irsgl:o:n:f:")) != -1)
   {
     switch (c) {
     case 'v':
@@ -428,6 +429,13 @@ int main(int argc, char **argv)
       break;
     case 'o':
       oname = optarg;
+      break;
+    case 'V':
+      stub_ver = atoi(optarg);
+      if (!stub_ver) {
+        fprintf(stderr, "Bad stub version: %s\n", optarg);
+        return 1;
+      }
       break;
     default:
       fprintf(stderr, "Unknow option: %c\n", c);
