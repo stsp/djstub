@@ -206,6 +206,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
         int stub_v4 = (buf[0x3b] >= 4 && buf[0x3b] < 0x20);
 
         if (stub_v4) {
+          stub_ver = buf[0x3b];
           memcpy(&flags, &buf[0x2c], sizeof(flags));
           if (flags & 0x80)
             dyn++;
