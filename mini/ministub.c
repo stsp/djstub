@@ -18,6 +18,11 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+
+#define DJSTUB_API_VER 5
 
 typedef struct
 {
@@ -50,24 +55,32 @@ int DPMIQueryExtension(unsigned short *sel, unsigned short *off,
   "mov eax, 0x168a\n"
   "mov esi, [ebp+16]\n" // name
   "int 0x2f\n"
+  "test al, al\n"
+  "jnz fail\n"
   "mov ebx, [ebp+8]\n"  // sel
   "mov [ebx], es\n"
   "mov ebx, [ebp+12]\n"
   "mov [ebx], edi\n"
   "pop es\n"
   "xor ah, ah\n"
+  "fail:\n"
   );
 }
 
 static void enter_stub(unsigned sel, unsigned off,
-    int argc, char *argv[], int envc, char *envp[], unsigned psp)
+    int argc, char *argv[], int envc, char *envp[], unsigned psp,
+    int fd, int ver)
 {
   asm(
     "mov eax, [ebp+32]\n"    // psp
+    "mov ecx, [ebp+40]\n"    // ver
+    "shl ecx, 16\n"
+    "or  eax, ecx\n"
     "mov ecx, [ebp+16]\n"    // argc
     "mov edx, [ebp+20]\n"    // argv
     "mov ebx, [ebp+24]\n"    // envc
     "mov esi, [ebp+28]\n"    // envp
+    "mov edi, [ebp+36]\n"    // fd
     "push dword [ebp+8]\n "  // sel
     "push dword [ebp+12]\n"  // off
     "call far [ss:esp]\n"
@@ -87,6 +100,7 @@ int main(int argc, char *argv[])
   unsigned short sel, off;
   int envc, i, letter;
   int err;
+  int fd;
   __dpmi_int_regs regs;
 
   if (argc == 0) {
@@ -144,13 +158,21 @@ int main(int argc, char *argv[])
     printf("%s unsupported (%x)\n", ext_nm, err);
     return 1;
   }
+
+  fd = open(argv[0], O_RDONLY);
+  if (fd == -1) {
+    printf("unable to open %s: %s\n", argv[0], strerror(errno));
+    return 1;
+  }
+
   memset(&regs, 0, sizeof(regs));
   /* nuke out initial stub as it is no longer needed */
   regs.eax = 0x4a00;
   regs.ebx = 0x10;  // leave only PSP
   regs.es = (unsigned)__dpmi_psp >> 4;
   __dpmi_int(0x21, &regs);
-  enter_stub(sel, off, argc, argv, envc, envp, psp);
+  enter_stub(sel, off, argc, argv, envc, envp, psp, fd, DJSTUB_API_VER);
+  close(fd);
   puts("stub returned");
   return 0;
 }
