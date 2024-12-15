@@ -34,7 +34,7 @@ make
 %check
 
 %install
-make install DESTDIR=%{buildroot} PREFIX=%{_prefix}
+make install DESTDIR=%{buildroot} prefix=%{_prefix}
 
 %files
 %defattr(-,root,root)

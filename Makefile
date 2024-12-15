@@ -5,8 +5,8 @@ ifeq ($(O_BFDARCH),)
 O_BFDARCH = elf64-x86-64
 endif
 PROG = djstubify
-PREFIX ?= /usr/local
-BINDIR ?= $(PREFIX)/bin
+prefix ?= /usr/local
+BINDIR ?= $(prefix)/bin
 CFLAGS ?= -Wall -Og -g
 # set to mini or full
 STYPE = mini
