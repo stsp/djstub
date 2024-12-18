@@ -1,9 +1,4 @@
 VER = 0.2
-OBJCOPY = objcopy
-O_BFDARCH=$(shell $(OBJCOPY) --info 2>/dev/null | head -n 2 | tail -n 1)
-ifeq ($(O_BFDARCH),)
-O_BFDARCH = elf64-x86-64
-endif
 PROG = djstubify
 prefix ?= /usr/local
 BINDIR ?= $(prefix)/bin
@@ -11,6 +6,7 @@ CFLAGS ?= -Wall -Og -g
 # set to mini or full
 STYPE = mini
 STUB = $(STYPE)stub.exe
+STUB_S = $(STYPE)stub.S
 CPPFLAGS += \
   -D_binary_stub_exe_start=_binary_$(STYPE)stub_exe_start \
   -D_binary_stub_exe_end=_binary_$(STYPE)stub_exe_end \
@@ -23,9 +19,8 @@ all: $(PROG)
 $(STUB): $(STYPE)
 	$(MAKE) -C $<
 
-binstub.o: $(STUB)
-	$(OBJCOPY) -I binary -O $(O_BFDARCH) \
-		--add-section .note.GNU-stack=/dev/null $< $@
+binstub.o: $(STUB_S) $(STUB)
+	$(CC) -c -o $@ $<
 
 $(PROG): stubify.o binstub.o
 	$(CC) $(LDFLAGS) -o $@ $^
