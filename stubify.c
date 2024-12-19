@@ -194,8 +194,11 @@ static int coff2exe(const char *fname, const char *oname, int info)
 
   while (1)
   {
+    int rc;
+
     lseek(ifile, coffset, SEEK_SET);
-    read(ifile, buf, 0x40);
+    rc = read(ifile, buf, 0x40);
+    assert(rc == 0x40);
     if (buf[0] == 'M' && buf[1] == 'Z') /* stubbed already, skip stub */
     {
       if (buf[8] == 4 && buf[9] == 0)  // lfanew
@@ -331,9 +334,11 @@ static int coff2exe(const char *fname, const char *oname, int info)
     }
   }
 
-  if (!rmstub)
-    write(ofile, _binary_stub_exe_start,
+  if (!rmstub) {
+    int rc = write(ofile, _binary_stub_exe_start,
         _binary_stub_exe_end-_binary_stub_exe_start);
+    assert(rc == _binary_stub_exe_end - _binary_stub_exe_start);
+  }
 
   /* copy either entire payload, or, in case of rmoverlay, only COFF */
   while (coff_file_size > 0 && (rbytes=read(ifile, buf, 4096)) > 0)
@@ -394,6 +399,7 @@ int main(int argc, char **argv)
   int noverlay = 0;
   const char *ovname = NULL;
   uint16_t stub_flags = 0;
+  int rc;
 
   if (_binary_stub_exe_start[0] != 'M' || _binary_stub_exe_start[1] != 'Z' ||
         _binary_stub_exe_start[8] != 4 || _binary_stub_exe_start[9] != 0) {
@@ -492,8 +498,9 @@ int main(int argc, char **argv)
     }
     v_printf("stubify: generate %s\n", oname);
 
-    write(ofile, _binary_stub_exe_start,
+    rc = write(ofile, _binary_stub_exe_start,
         _binary_stub_exe_end-_binary_stub_exe_start);
+    assert(rc == _binary_stub_exe_end - _binary_stub_exe_start);
 
     for (i = 0; i < noverlay; i++)
     {
