@@ -52,6 +52,7 @@ static char *overlay[MAX_OVL];
 static int strip;
 static uint8_t stub_ver = 6;
 static uint8_t flags_ver = 0;
+static const int version = 0;
 
 static int copy_file(const char *ovl, int ofile)
 {
@@ -431,7 +432,7 @@ int main(int argc, char **argv)
     case 'v':
 #define _S(x) #x
 #define S(x) _S(x)
-      printf("djstubify version %s\n", S(VERSION));
+      printf("djstubify version 0.%i\n", version + stub_ver);
       return 0;
     case 'd':
       verbose = 1;

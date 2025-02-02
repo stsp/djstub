@@ -1,4 +1,3 @@
-VER = 0.2
 PROG = djstubify
 prefix ?= /usr/local
 BINDIR ?= $(prefix)/bin
@@ -10,8 +9,7 @@ STUB_S = $(STYPE)stub.S
 CPPFLAGS += \
   -D_binary_stub_exe_start=_binary_$(STYPE)stub_exe_start \
   -D_binary_stub_exe_end=_binary_$(STYPE)stub_exe_end \
-  -D_binary_stub_exe_size=_binary_$(STYPE)stub_exe_size \
-  -DVERSION=$(VER)
+  -D_binary_stub_exe_size=_binary_$(STYPE)stub_exe_size
 
 all: $(PROG)
 
