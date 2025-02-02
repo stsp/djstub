@@ -50,7 +50,8 @@ static int rmstub;
 #define MAX_OVL 5
 static char *overlay[MAX_OVL];
 static int strip;
-static uint8_t stub_ver = 4;
+static uint8_t stub_ver = 6;
+static uint8_t flags_ver = 0;
 
 static int copy_file(const char *ovl, int ofile)
 {
@@ -80,7 +81,7 @@ static int copy_file(const char *ovl, int ofile)
 static const char *payload_dsc[] = {
   "%s DOS payload",
   "%s/ELF host payload",
-  "%s/ELF host debug info",
+  "%s/ELF debug info",
 };
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -207,13 +208,17 @@ static int coff2exe(const char *fname, const char *oname, int info)
         uint16_t flags = 0;
         int dyn = 0;
         int stub_v4 = (buf[0x3b] >= 4 && buf[0x3b] < 0x20);
+        int stub_v6 = stub_v4 && buf[0x3b] >= 6;
 
-        if (stub_v4) {
-          stub_ver = buf[0x3b];
+        if (stub_v6) {
+          flags_ver = buf[0x3a];
+          memcpy(&flags, &buf[0x38], sizeof(flags));
+        } else if (stub_v4) {
+          flags_ver = buf[0x3b];
           memcpy(&flags, &buf[0x2c], sizeof(flags));
-          if (flags & 0x80)
-            dyn++;
         }
+        if (stub_v4 && (flags & 0x80))
+          dyn++;
         memcpy(&offs, &buf[0x3c], sizeof(offs));
         coffset = offs;
         memcpy(&coff_file_size, &buf[0x1c], sizeof(coff_file_size));
@@ -230,7 +235,8 @@ static int coff2exe(const char *fname, const char *oname, int info)
         if (info || strip) {
           int cnt = 0;
           uint32_t sz = 0;
-          for (i = 0x1c; i < 0x30; i += 4) {
+          char name[20] = {};
+          for (i = 0x1c; i < 0x28; i += 4) {
             uint32_t sz0;
             memcpy(&sz0, &buf[i], sizeof(sz0));
             if (!sz0) {
@@ -243,16 +249,29 @@ static int coff2exe(const char *fname, const char *oname, int info)
             sz = sz0;
             if (!cnt)
               has_o0++;
-            if (info)
-              IPRINTF("Overlay %i (%s) at %i, size %i\n", cnt,
+            if (info) {
+              int prname = 0;
+              if (stub_v6 && cnt + dyn == 1 && buf[0x28]) {
+                uint32_t noff;
+                memcpy(&noff, &buf[0x28], sizeof(noff));
+                lseek(ifile, offs + noff, SEEK_SET);
+                read(ifile, name, 16);
+                name[16] = '\0';
+              }
+              prname = (name[0] && cnt + dyn == 2);
+              IPRINTF("Overlay %i (%s%s%s) at %i, size %i\n", cnt,
                   identify(cnt + dyn, ifile, offs),
+                  prname ? " for " : "", prname ? name : "",
                   offs, sz);
+            }
             offs += sz;
             cnt++;
           }
-          if (stub_v4) {
+          if (stub_v4 && !stub_v6) {
             if (buf[0x2e])
               IPRINTF("Overlay name: %.12s\n", buf + 0x2e);
+          }
+          if (stub_v4) {
             IPRINTF("Stub version: %i\n", buf[0x3b]);
             IPRINTF("Stub flags: 0x%04x\n", flags);
           }
@@ -308,6 +327,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
     memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
           sizeof(coff_file_size));
   }
+  _binary_stub_exe_start[0x3a] = flags_ver;
   _binary_stub_exe_start[0x3b] = stub_ver;
   memcpy(_binary_stub_exe_start + 0x3c, &stub_size, sizeof(stub_size));
 
@@ -380,10 +400,10 @@ static void print_help(void)
 	  "-s -> strip last overlay\n"
 	  "-r -> remove stub (and overlay, if any)\n"
 	  "-l <file_name> -> link in <file_name> file as an overlay\n"
-	  "-n <name> -> write <name> into an overlay info\n"
+	  "-n <offs> -> write name offset into an overlay info\n"
 	  "-o <name> -> write output into <name>\n"
 	  "-f <flags> -> write <flags> into an overlay info\n"
-	  "-V <stub_ver> -> write <stub_ver> into stub version field\n"
+	  "-V <flags_ver> -> write <flags_ver> into flags version field\n"
 	  "-g -> generate a new file\n"
   );
 }
@@ -395,7 +415,7 @@ int main(int argc, char **argv)
   int info = 0;
   int c;
   int noverlay = 0;
-  const char *ovname = NULL;
+  uint32_t nmoffs = 0;
   uint16_t stub_flags = 0;
   int rc;
 
@@ -433,7 +453,7 @@ int main(int argc, char **argv)
       overlay[noverlay++] = optarg;
       break;
     case 'n':
-      ovname = optarg;
+      nmoffs = strtol(optarg, NULL, 0);
       break;
     case 'f':
       stub_flags |= strtol(optarg, NULL, 0);
@@ -442,14 +462,14 @@ int main(int argc, char **argv)
       oname = optarg;
       break;
     case 'V':
-      stub_ver = atoi(optarg);
-      if (!stub_ver) {
+      flags_ver = atoi(optarg);
+      if (!flags_ver) {
         fprintf(stderr, "Bad stub version: %s\n", optarg);
         return 1;
       }
       break;
     default:
-      fprintf(stderr, "Unknow option: %c\n", c);
+      fprintf(stderr, "Unknown option: %c\n", c);
       print_help();
       return 1;
     }
@@ -479,11 +499,9 @@ int main(int argc, char **argv)
         memcpy(_binary_stub_exe_start + 0x1c + i * 4, &sb.st_size, 4);
       }
     }
-    memcpy(_binary_stub_exe_start + 0x2c, &stub_flags, sizeof(stub_flags));
-    if (ovname) {
-      strncpy(_binary_stub_exe_start + 0x2e, ovname, 12);
-      _binary_stub_exe_start[0x2e + 12] = '\0';
-    }
+    memcpy(_binary_stub_exe_start + 0x28, &nmoffs, sizeof(nmoffs));
+    memcpy(_binary_stub_exe_start + 0x38, &stub_flags, sizeof(stub_flags));
+    _binary_stub_exe_start[0x3a] = flags_ver;
     _binary_stub_exe_start[0x3b] = stub_ver;
     memcpy(_binary_stub_exe_start + 0x3c, &stub_size, sizeof(stub_size));
 

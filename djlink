@@ -39,8 +39,10 @@ if [ -n "$D" ]; then
   TMP=$(mktemp)
   $STRIP -o $TMP $SO
   $OBJCOPY --add-gnu-debuglink=$DBG $TMP
+  OFFS=`LC_ALL=C readelf -S $TMP | grep .gnu_debuglink | \
+    tr -s '[:space:]' | cut -d " " -f 6 | sed -E -e 's/0*/0x/'`
   SO=$TMP
-  DOPT="-l $DBG"
+  DOPT="-n $OFFS -l $DBG"
 fi
 
 CMD="djstubify -g $* -l $SO $DOPT"
