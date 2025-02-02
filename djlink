@@ -11,10 +11,14 @@ if [ "$#" -lt 1 ]; then
   echo "Usage: djlink [-d <debug_name>] <solib_name> [<djstubify_opts>]"
   exit 0
 fi
-while getopts "d:" opt; do
+while getopts "d:v" opt; do
   case "$opt" in
     d)
       D="$OPTARG"
+      ;;
+    v)
+      djstubify -v
+      exit $?
       ;;
     \?)
       exit 1
