@@ -385,8 +385,6 @@ static void print_help(void)
 	  "-f <flags> -> write <flags> into an overlay info\n"
 	  "-V <stub_ver> -> write <stub_ver> into stub version field\n"
 	  "-g -> generate a new file\n"
-	  "\nNote: -g is useful only for debugging, as the stub is being\n"
-	  "customized for a particular program and its overlay.\n"
   );
 }
 
