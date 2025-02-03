@@ -175,6 +175,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
   char buf[4096];
   int rbytes;
   long coffset = 0;
+  uint32_t ooffs = 0;
   unsigned char mzhdr_buf[0x40];
   uint32_t coff_file_size = 0;
   int rmoverlay = 0;
@@ -248,8 +249,15 @@ static int coff2exe(const char *fname, const char *oname, int info)
               break;
             }
             sz = sz0;
-            if (!cnt)
+            if (!cnt) {
               has_o0++;
+              if (stub_v6) {
+                memcpy(&ooffs, &buf[0x2c], sizeof(ooffs));
+                offs += ooffs;
+              }
+            }
+            if (stub_v6 && cnt == 1 && (flags & 0x8000))
+              offs = coffset;
             if (info) {
               int prname = 0;
               if (stub_v6 && cnt + dyn == 1 && buf[0x28]) {
@@ -304,7 +312,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
     {
       if (info) {
         if (has_o0)
-          snprintf(ibuf0, sizeof(ibuf0), "%s/ELF", elf_id(ifile, coffset));
+          snprintf(ibuf0, sizeof(ibuf0), "%s/ELF", elf_id(ifile, coffset + ooffs));
         else
           IPRINTF("ELF payload for %s at %li\n", elf_id(ifile, coffset), coffset);
       }
@@ -417,6 +425,8 @@ int main(int argc, char **argv)
   int c;
   int noverlay = 0;
   uint32_t nmoffs = 0;
+  uint32_t osize = 0;
+  uint32_t ooffs = 0;
   uint16_t stub_flags = 0;
   int rc;
 
@@ -426,7 +436,7 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  while ((c = getopt(argc, argv, "dvV:irsgl:o:n:f:")) != -1)
+  while ((c = getopt(argc, argv, "dvV:irS:sgl:O:o:n:f:")) != -1)
   {
     switch (c) {
     case 'v':
@@ -443,6 +453,9 @@ int main(int argc, char **argv)
     case 'r':
       rmstub = 1;
       break;
+    case 'S':
+      osize = strtol(optarg, NULL, 0);
+      break;
     case 's':
       strip = 1;
       break;
@@ -458,6 +471,9 @@ int main(int argc, char **argv)
       break;
     case 'f':
       stub_flags |= strtol(optarg, NULL, 0);
+      break;
+    case 'O':
+      ooffs = strtol(optarg, NULL, 0);
       break;
     case 'o':
       oname = optarg;
@@ -489,6 +505,11 @@ int main(int argc, char **argv)
     }
     if (noverlay) {
       struct stat sb;
+      int dyn = 0;
+      if (osize) {
+        memcpy(_binary_stub_exe_start + 0x1c, &osize, 4);
+        dyn++;
+      }
       /* store overlay sizes in overlay info */
       for (i = 0; i < noverlay; i++) {
         int rc = stat(overlay[i], &sb);
@@ -497,8 +518,10 @@ int main(int argc, char **argv)
               strerror(errno));
           return EXIT_FAILURE;
         }
-        memcpy(_binary_stub_exe_start + 0x1c + i * 4, &sb.st_size, 4);
+        memcpy(_binary_stub_exe_start + 0x1c + (i + dyn) * 4, &sb.st_size, 4);
       }
+      if (ooffs)
+        memcpy(_binary_stub_exe_start + 0x2c, &ooffs, 4);
     }
     memcpy(_binary_stub_exe_start + 0x28, &nmoffs, sizeof(nmoffs));
     memcpy(_binary_stub_exe_start + 0x38, &stub_flags, sizeof(stub_flags));
