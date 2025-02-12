@@ -264,8 +264,11 @@ static int coff2exe(const char *fname, const char *oname, int info)
                 uint32_t noff;
                 memcpy(&noff, &buf[0x28], sizeof(noff));
                 lseek(ifile, offs + noff, SEEK_SET);
-                read(ifile, name, 16);
-                name[16] = '\0';
+                rc = read(ifile, name, 16);
+                if (rc == 16)
+                  name[16] = '\0';
+                else
+                  name[0] = '\0';
               }
               prname = (name[0] && cnt + dyn == 2);
               IPRINTF("Overlay %i (%s%s%s) at %i, size %i\n", cnt,
