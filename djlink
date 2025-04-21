@@ -51,8 +51,8 @@ fi
 
 ID="`LC_ALL=C readelf -S $SO | grep .dj64startup`"
 if [ -n "$ID" ]; then
-  SZ=`LC_ALL=C readelf -S $SO | grep -A 1 .dj64startup | tail -n 1 | \
-    tr -s '[:space:]' | cut -d " " -f 2 | sed -E -e 's/0*/0x/'`
+  SZ=`LC_ALL=C readelf -W -S $SO | grep .dj64startup | \
+    tr -s '[:space:]' | cut -d " " -f 7 | sed -E -e 's/0*/0x/'`
   OFF=`echo "$ID" | tr -s '[:space:]' | cut -d " " -f 6 | sed -E -e 's/0*/0x/'`
   DOPT="$DOPT -S $SZ -O $OFF -f 0x8000"
 fi
