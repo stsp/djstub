@@ -49,11 +49,10 @@ if [ -n "$D" ]; then
   DOPT="-n $OFFS -l $DBG"
 fi
 
-ID="`LC_ALL=C readelf -S $SO | grep .dj64startup`"
+ID="`LC_ALL=C readelf -W -S $SO | grep .dj64startup | tr -s '[:space:]'`"
 if [ -n "$ID" ]; then
-  SZ=`LC_ALL=C readelf -W -S $SO | grep .dj64startup | \
-    tr -s '[:space:]' | cut -d " " -f 7 | sed -E -e 's/0*/0x/'`
-  OFF=`echo "$ID" | tr -s '[:space:]' | cut -d " " -f 6 | sed -E -e 's/0*/0x/'`
+  SZ=`echo "$ID" | cut -d " " -f 7 | sed -E -e 's/0*/0x/'`
+  OFF=`echo "$ID" | cut -d " " -f 6 | sed -E -e 's/0*/0x/'`
   DOPT="$DOPT -S $SZ -O $OFF -f 0x8000"
 fi
 
