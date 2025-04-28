@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+if [ "$#" -lt 2 ]; then
+  echo "Usage: djelfextract <solib_name> <out_elf>"
+  exit 0
+fi
+
+ID="`LC_ALL=C readelf -W -S $1 | grep .dj64startup | sed -E -e 's/.+\] +//' | \
+    tr -s '[:space:]'`"
+if [ -z "$ID" ]; then
+  echo ".dj64startupsection not found"
+  exit 1
+fi
+
+SZ=`echo "$ID" | cut -d " " -f 5 | sed -E -e 's/0*/0x/'`
+OFF=`echo "$ID" | cut -d " " -f 4 | sed -E -e 's/0*/0x/'`
+dd if=$1 of=$2 bs=1 count=$(($SZ)) skip=$(($OFF))

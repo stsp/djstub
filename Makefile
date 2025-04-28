@@ -28,11 +28,13 @@ install:
 	install -m 0755 $(PROG) $(DESTDIR)$(BINDIR)
 	install -m 0755 djstrip $(DESTDIR)$(BINDIR)
 	install -m 0755 djlink $(DESTDIR)$(BINDIR)
+	install -m 0755 djelfextract $(DESTDIR)$(BINDIR)
 
 uninstall:
 	$(RM) $(DESTDIR)$(BINDIR)/$(PROG)
 	$(RM) $(DESTDIR)$(BINDIR)/djstrip
 	$(RM) $(DESTDIR)$(BINDIR)/djlink
+	$(RM) $(DESTDIR)$(BINDIR)/djelfextract
 
 deb:
 	debuild -i -us -uc -b
