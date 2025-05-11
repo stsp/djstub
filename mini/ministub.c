@@ -17,6 +17,7 @@
  *
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -105,7 +106,7 @@ int main(int argc, char *argv[])
 
   if (argc == 0) {
     puts("no env");
-    return 1;
+    return EXIT_FAILURE;
   }
   for (envc = i = letter = 0;; i++) {
     if (env[i] == '\0') {
@@ -156,13 +157,13 @@ int main(int argc, char *argv[])
   err = DPMIQueryExtension(&sel, &off, ext_nm);
   if (err) {
     printf("%s unsupported (%x)\n", ext_nm, err);
-    return 1;
+    return EXIT_FAILURE;
   }
 
   fd = open(argv[0], O_RDONLY);
   if (fd == -1) {
     printf("unable to open %s: %s\n", argv[0], strerror(errno));
-    return 1;
+    return EXIT_FAILURE;
   }
 
   memset(&regs, 0, sizeof(regs));
@@ -174,5 +175,5 @@ int main(int argc, char *argv[])
   enter_stub(sel, off, argc, argv, envc, envp, psp, fd, DJSTUB_API_VER);
   close(fd);
   puts("stub returned");
-  return 0;
+  return EXIT_FAILURE;
 }
