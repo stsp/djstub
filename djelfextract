@@ -8,7 +8,7 @@ fi
 ID="`LC_ALL=C readelf -W -S $1 | grep .dj64startup | sed -E -e 's/.+\] +//' | \
     tr -s '[:space:]'`"
 if [ -z "$ID" ]; then
-  echo ".dj64startupsection not found"
+  echo ".dj64startup section not found"
   exit 1
 fi
 
