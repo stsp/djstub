@@ -40,9 +40,11 @@
 #include <assert.h>
 #include "elf.h"
 
-extern char _binary_stub_exe_end[];
-extern char _binary_stub_exe_size[];
-extern char _binary_stub_exe_start[];
+#define str(s) #s
+#define ASMSYM(s) asm(str(s))
+extern char _binary_stub_exe_end[] ASMSYM(_binary_stub_exe_end);
+extern char _binary_stub_exe_size[] ASMSYM(_binary_stub_exe_size);
+extern char _binary_stub_exe_start[] ASMSYM(_binary_stub_exe_start);
 
 #define v_printf if(verbose)printf
 static int verbose;
