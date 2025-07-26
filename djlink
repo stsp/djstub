@@ -1,10 +1,33 @@
 #!/usr/bin/env bash
 
+OS=`uname -s`
+if test "$OS" == "Darwin" && command -v brew &>/dev/null; then
+  # add keg-only llvm to PATH so llvm-objcopy and llvm-readobj can be found
+  PATH=$PATH:$(brew --prefix llvm)/bin
+fi
+
 if [ -z "$OBJCOPY" ]; then
   OBJCOPY=objcopy
+  if ! $OBJCOPY --version &> /dev/null; then
+     OBJCOPY=llvm-objcopy
+     if ! $OBJCOPY --version &> /dev/null; then
+       echo "Neither objcopy nor llvm-objcopy are installed"
+       exit 1
+     fi
+  fi
 fi
 if [ -z "$STRIP" ]; then
   STRIP=strip
+fi
+if [ "$OS" != "Darwin" -a -z "$READELF" ]; then
+  READELF=readelf
+  if ! $READELF --version &> /dev/null; then
+     READELF=llvm-readelf
+     if ! $READELF --version &> /dev/null; then
+       echo "Neither readelf nor llvm-readelf are installed"
+       exit 1
+     fi
+  fi
 fi
 
 if [ "$#" -lt 1 ]; then
@@ -34,26 +57,50 @@ if [ ! -f "$SO" ]; then
 fi
 
 if [ -n "$D" ]; then
-  if [ -z "`readelf -S $SO | grep .debug_info`" ]; then
+  if test "$OS" == "Darwin"; then
+    debuginfo="`dsymutil -s libtmp.so | grep N_OSO`"
+  else
+    debuginfo="`$READELF -S $SO | grep .debug_info`"
+  fi
+  if [ -z "$debuginfo" ]; then
     echo "$0: -d is specified but $SO is stripped"
     exit 1
   fi
   DBG="/tmp/$D"
-  $OBJCOPY --only-keep-debug $SO $DBG
   TMP=$(mktemp)
-  $STRIP -o $TMP $SO
-  $OBJCOPY --add-gnu-debuglink=$DBG $TMP
-  OFFS=`LC_ALL=C readelf -S $TMP | grep .gnu_debuglink | \
-    tr -s '[:space:]' | cut -d " " -f 6 | sed -E -e 's/0*/0x/'`
+  if test "$OS" == "Darwin"; then
+    dsymutil -f $SO -o $DBG
+    $STRIP -x -o $TMP $SO
+    TMP2=$(mktemp)
+    echo $D > $TMP2
+    $OBJCOPY --add-section __TEXT,.gnu_debuglink=$TMP2 $TMP
+    OFFS=`LC_ALL=C llvm-readobj -S $TMP | grep -A 4 .gnu_debuglink | \
+       grep Offset | sed 's/.* //'`
+  else
+    $OBJCOPY --only-keep-debug $SO $DBG
+    $STRIP -o $TMP $SO
+    $OBJCOPY --add-gnu-debuglink=$DBG $TMP
+    OFFS=`LC_ALL=C $READELF -S $TMP | grep .gnu_debuglink | \
+      tr -s '[:space:]' | cut -d " " -f 6 | sed -E -e 's/0*/0x/'`
+  fi
   SO=$TMP
   DOPT="-n $OFFS -l $DBG"
 fi
 
-ID="`LC_ALL=C readelf -W -S $SO | grep .dj64startup | sed -E -e 's/.+\] +//' | \
+if test "$OS" == "Darwin"; then
+  ID="`LC_ALL=C llvm-readobj -W -S $SO | grep -A 4 .dj64startup`"
+else
+  ID="`LC_ALL=C $READELF -W -S $SO | grep .dj64startup | sed -E -e 's/.+\] +//' | \
     tr -s '[:space:]'`"
+fi
 if [ -n "$ID" ]; then
-  SZ=`echo "$ID" | cut -d " " -f 5 | sed -E -e 's/0*/0x/'`
-  OFF=`echo "$ID" | cut -d " " -f 4 | sed -E -e 's/0*/0x/'`
+  if test "$OS" == "Darwin"; then
+    SZ=`echo "$ID" | grep Size | sed -e 's/.* //'`
+    OFF=`echo "$ID" | grep Offset | sed -e 's/.* //'`
+  else
+    SZ=`echo "$ID" | cut -d " " -f 5 | sed -E -e 's/0*/0x/'`
+    OFF=`echo "$ID" | cut -d " " -f 4 | sed -E -e 's/0*/0x/'`
+  fi
   DOPT="$DOPT -S $SZ -O $OFF -f 0x8000"
 fi
 
@@ -62,6 +109,7 @@ CMD="djstubify -g $* -l $SO $DOPT"
 $CMD
 
 [ -z "$TMP" ] || rm "$TMP"
+[ -z "$TMP2" ] || rm "$TMP2"
 if [ -n "$DBG" -a -f "$DBG" ]; then
   rm $DBG
 fi
