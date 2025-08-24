@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <assert.h>
 
 #define DJSTUB_API_VER 5
 
@@ -91,7 +92,8 @@ static void enter_stub(unsigned sel, unsigned off,
 
 extern void* __dpmi_psp;
 extern void* __dpmi_env;
-static unsigned psp;
+static unsigned short psp;
+static unsigned esp;
 
 int main(int argc, char *argv[])
 {
@@ -153,6 +155,7 @@ int main(int argc, char *argv[])
     "mov cx, 0\n"
     "mov dx, 0ffh\n"  // to PSP size
     "int 31h\n"
+    "mov [_esp], esp\n"
   );
   err = DPMIQueryExtension(&sel, &off, ext_nm);
   if (err) {
@@ -168,6 +171,7 @@ int main(int argc, char *argv[])
 
   memset(&regs, 0, sizeof(regs));
   /* nuke out initial stub as it is no longer needed */
+  assert(esp > 0x110000); /* not going to free own stack */
   regs.eax = 0x4a00;
   regs.ebx = 0x10;  // leave only PSP
   regs.es = (unsigned)__dpmi_psp >> 4;
