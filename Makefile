@@ -1,4 +1,5 @@
 PROG = djstubify
+VER = 7
 prefix ?= /usr/local
 BINDIR ?= $(prefix)/bin
 CFLAGS ?= -Wall -Og -g
@@ -6,7 +7,7 @@ CFLAGS ?= -Wall -Og -g
 STYPE = mini
 STUB = $(STYPE)stub.exe
 STUB_S = $(STYPE)stub.S
-CPPFLAGS += \
+CPPFLAGS += -DDJSTUB_VER=$(VER) \
   -D_binary_stub_exe_start=_binary_$(STYPE)stub_exe_start \
   -D_binary_stub_exe_end=_binary_$(STYPE)stub_exe_end \
   -D_binary_stub_exe_size=_binary_$(STYPE)stub_exe_size
