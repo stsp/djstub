@@ -1,6 +1,11 @@
 PROG = djstubify
 VER = 7
+# on Termux PREFIX is used
+ifneq ($(PREFIX),)
+prefix := $(PREFIX)
+else
 prefix ?= /usr/local
+endif
 BINDIR ?= $(prefix)/bin
 CFLAGS ?= -Wall -Og -g
 # set to mini or full
