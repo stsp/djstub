@@ -25,6 +25,7 @@
 #include <assert.h>
 
 #define DJSTUB_API_VER 5
+#define MINISTUB_VER 8
 
 typedef struct
 {
@@ -252,7 +253,8 @@ int main(int argc, char *argv[])
   __dpmi_int(0x21, &regs);
   /* try to nuke PM part as well */
   err = dpmi_init();
-  enter_stub(sel, off, argc, argv, envc, envp, psp, fd, DJSTUB_API_VER);
+  enter_stub(sel, off, argc, argv, envc, envp, psp, fd,
+      DJSTUB_API_VER | (MINISTUB_VER << 8));
   if (err) {
     close(fd);
     puts("stub returned");
