@@ -90,6 +90,80 @@ static void enter_stub(unsigned sel, unsigned off,
   );
 }
 
+static unsigned lcall(unsigned sel, unsigned off, unsigned ax)
+{
+  asm(
+    "push dword [ebp+8]\n "  // sel
+    "push dword [ebp+12]\n"  // off
+    "mov eax, [ebp+16]\n"    // ax
+    "call far [ss:esp]\n"
+    "pop eax\n"
+    "pop eax\n"
+    "pushf\n"
+    "pop eax\n"
+  );
+}
+
+static void int2f(__dpmi_int_regs *r)
+{
+  asm(
+    "push es\n"
+    "mov ebx, [ebp+8]\n"
+    "mov edi, [ebx]\n"
+    "mov esi, [ebx+4]\n"
+    "mov edx, [ebx+20]\n"
+    "mov ecx, [ebx+24]\n"
+    "mov eax, [ebx+28]\n"
+    "mov ebx, [ebx+16]\n"
+    "stc\n"
+    "int 0x2f\n"
+    "push ebx\n"
+    "mov ebx, [ebp+8]\n"
+    "pop dword [ebx+16]\n"
+    "pushfw\n"
+    "pop word [ebx+32]\n"
+    "mov [ebx], edi\n"
+    "mov [ebx+4], esi\n"
+    "mov [ebx+20], edx\n"
+    "mov [ebx+24], ecx\n"
+    "mov [ebx+28], eax\n"
+    "mov [ebx+34], es\n"
+    "mov [ebx+36], ds\n"
+    "mov [ebx+38], fs\n"
+    "mov [ebx+40], gs\n"
+    "pop es\n"
+  );
+}
+
+static int dpmi_init(void)
+{
+    __dpmi_int_regs r;
+    unsigned f;
+
+#define CF 1
+    memset(&r, 0, sizeof(r));
+    r.eax = 0x1687;
+    int2f(&r);
+    if ((r.flags & CF) || r.eax != 0) {
+        fprintf(stderr, "DPMI unavailable\n");
+        return -1;
+    }
+    if (!(r.ebx & 1)) {
+        fprintf(stderr, "DPMI-32 unavailable\n");
+        return -1;
+    }
+    if (r.esi) {
+        fprintf(stderr, "invalid DPMI server, %i para requested\n", r.esi);
+        return -1;
+    }
+    f = lcall(r.es, r.edi, 1);
+    if (f & CF) {
+        fprintf(stderr, "DPMI init failed\n");
+        return -1;
+    }
+    return 0;
+}
+
 extern void* __dpmi_psp;
 extern void* __dpmi_env;
 static unsigned short psp;
@@ -176,8 +250,18 @@ int main(int argc, char *argv[])
   regs.ebx = 0x10;  // leave only PSP
   regs.es = (unsigned)__dpmi_psp >> 4;
   __dpmi_int(0x21, &regs);
+  /* try to nuke PM part as well */
+  err = dpmi_init();
   enter_stub(sel, off, argc, argv, envc, envp, psp, fd, DJSTUB_API_VER);
-  close(fd);
-  puts("stub returned");
+  if (err) {
+    close(fd);
+    puts("stub returned");
+  } else {
+    /* we can't even print anything, as runtime entirely nuked */
+    asm(
+      "mov ax, 0x4c01\n"
+      "int 0x21\n"
+    );
+  }
   return EXIT_FAILURE;
 }
