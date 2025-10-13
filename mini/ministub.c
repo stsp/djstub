@@ -70,7 +70,7 @@ int DPMIQueryExtension(unsigned short *sel, unsigned short *off,
   );
 }
 
-static void enter_stub(unsigned sel, unsigned off,
+static int enter_stub(unsigned sel, unsigned off,
     int argc, char *argv[], int envc, char *envp[], unsigned psp,
     int fd, int ver)
 {
@@ -255,9 +255,9 @@ int main(int argc, char *argv[])
   __dpmi_int(0x21, &regs);
   /* try to nuke PM part as well */
   dpmi_init();
-  enter_stub(sel, off, argc, argv, envc, envp, psp, fd,
+  err = enter_stub(sel, off, argc, argv, envc, envp, psp, fd,
       DJSTUB_API_VER | (MINISTUB_VER << 8));
   close(fd);
   puts("stub returned");
-  return EXIT_FAILURE;
+  return err;
 }
