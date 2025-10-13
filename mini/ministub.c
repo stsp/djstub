@@ -94,6 +94,7 @@ static void enter_stub(unsigned sel, unsigned off,
 static unsigned lcall(unsigned sel, unsigned off, unsigned ax)
 {
   asm(
+    "push es\n"
     "push dword [ebp+8]\n "  // sel
     "push dword [ebp+12]\n"  // off
     "mov eax, [ebp+16]\n"    // ax
@@ -102,6 +103,7 @@ static unsigned lcall(unsigned sel, unsigned off, unsigned ax)
     "pop eax\n"
     "pushf\n"
     "pop eax\n"
+    "pop es\n"
   );
 }
 
@@ -252,18 +254,10 @@ int main(int argc, char *argv[])
   regs.es = (unsigned)__dpmi_psp >> 4;
   __dpmi_int(0x21, &regs);
   /* try to nuke PM part as well */
-  err = dpmi_init();
+  dpmi_init();
   enter_stub(sel, off, argc, argv, envc, envp, psp, fd,
       DJSTUB_API_VER | (MINISTUB_VER << 8));
-  if (err) {
-    close(fd);
-    puts("stub returned");
-  } else {
-    /* we can't even print anything, as runtime entirely nuked */
-    asm(
-      "mov ax, 0x4c01\n"
-      "int 0x21\n"
-    );
-  }
+  close(fd);
+  puts("stub returned");
   return EXIT_FAILURE;
 }
