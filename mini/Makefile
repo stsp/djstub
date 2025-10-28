@@ -1,6 +1,6 @@
 TOP = ..
 TGT = $(TOP)/ministub.exe
-CC = smlrcc
+STUBCC = smlrcc
 SMFLAGS = -dosp
 
 ifneq ($(SMPATH),)
@@ -13,6 +13,6 @@ endif
 all: $(TGT)
 
 $(TGT): ministub.c
-	$(P) $(CC) $(SMFLAGS) $< -o $@
+	$(P) $(STUBCC) $(SMFLAGS) $< -o $@
 
 clean:
