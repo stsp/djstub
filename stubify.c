@@ -211,6 +211,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
         uint32_t offs;
         uint16_t flags = 0;
         int dyn = 0;
+        int dj32 = 0;
         int stub_v4 = (buf[0x3b] >= 4 && buf[0x3b] < 0x20);
         int stub_v6 = stub_v4 && buf[0x3b] >= 6;
 
@@ -223,6 +224,8 @@ static int coff2exe(const char *fname, const char *oname, int info)
         }
         if (stub_v4 && (flags & 0x80))
           dyn++;
+        if (stub_v6 && (flags & 0x2000))
+          dj32++;
         memcpy(&offs, &buf[0x3c], sizeof(offs));
         coffset = offs;
         memcpy(mzhdr_buf, buf, sizeof(mzhdr_buf));
@@ -231,7 +234,10 @@ static int coff2exe(const char *fname, const char *oname, int info)
           rmoverlay++;
 
         if (info) {
-          strcat(ibuf, "dj64 file format\n");
+          strcat(ibuf, "dj64 file format");
+          if (dj32)
+            strcat(ibuf, " (dj32)");
+          strcat(ibuf, "\n");
           if (dyn)
             strcat(ibuf, "DOS payload dynamic\n");
         }
@@ -259,7 +265,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
             }
             if (info) {
               int prname = 0;
-              if (stub_v6 && cnt + dyn == 1 && buf[0x28]) {
+              if (stub_v6 && !dj32 && cnt + dyn == 1 && buf[0x28]) {
                 uint32_t noff;
                 memcpy(&noff, &buf[0x28], sizeof(noff));
                 lseek(ifile, offs + noff, SEEK_SET);
@@ -269,9 +275,9 @@ static int coff2exe(const char *fname, const char *oname, int info)
                 else
                   name[0] = '\0';
               }
-              prname = (name[0] && cnt + dyn == 2);
+              prname = (name[0] && cnt + dyn + dj32 == 2);
               IPRINTF("Overlay %i (%s%s%s) at %i, size %i\n", cnt,
-                  identify(cnt + dyn, ifile, offs),
+                  identify(cnt + dyn + dj32, ifile, offs),
                   prname ? " for " : "", prname ? name : "",
                   offs, sz);
             }
