@@ -241,7 +241,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
           if (dyn)
             strcat(ibuf, "DOS payload dynamic\n");
         }
-        if (info || strip) {
+        if (info || rmoverlay) {
           int cnt = 0;
           int embl = 0;
           uint32_t sz = 0;
@@ -286,7 +286,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
           }
           if (rmstub) {
             /* rmstub removes all overlays */
-            memcpy(&coff_file_size, &buf[0x1c], sizeof(coff_file_size));
+            memcpy(&coff_file_size, &buf[0x1c + embl * 4], sizeof(coff_file_size));
           } else if (strip && cnt > 1 + embl) {
             coff_file_size = offs - sz - coffset;
             memset(&mzhdr_buf[i - 4], 0, 4);
