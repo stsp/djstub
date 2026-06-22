@@ -182,7 +182,8 @@ int main(int argc, char *argv[], char *envp[])
             perror("fread()");
             exit(EXIT_FAILURE);
         }
-        if (buf[0] == 'M' && buf[1] == 'Z' && buf[8] == 4 /* lfanew */) {
+        if (buf[0] == 'M' && buf[1] == 'Z' && buf[8] == 4 && buf[9] == 0) {
+            /* lfanew */
             uint32_t offs;
             cnt++;
             stub_debug("Found exe header %i at 0x%lx\n", cnt, coffset);
