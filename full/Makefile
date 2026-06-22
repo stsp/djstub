@@ -18,3 +18,6 @@ $(TGT): $(OBJECTS)
 else
 $(error ia16-gcc not installed)
 endif
+
+clean:
+	$(RM) *.o *.d
