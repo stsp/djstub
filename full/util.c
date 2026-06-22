@@ -21,7 +21,7 @@
 #include <dos.h>
 #include "util.h"
 
-static void farmemcpy(char __far *ptr, unsigned long offset, char *src,
+static void farmemcpy(char_far ptr, unsigned long offset, char *src,
                unsigned long length)
 {
     unsigned dummy;
@@ -40,12 +40,12 @@ static void farmemcpy(char __far *ptr, unsigned long offset, char *src,
           "xor %%edi, %%edi\n"
           ".arch i286\n"
         : "=c"(dummy), "=D"(dummy)
-        : "a"(0), "d"(FP_SEG(ptr)), "D"(FP_OFF(ptr)), "S"(src),
+        : "a"(0), "d"(__FP_SEG(ptr)), "D"(__FP_OFF(ptr)), "S"(src),
           [size]"m"(length), [offs]"m"(offset)
         : "memory");
 }
 
-void farmemset(char __far *ptr, uint32_t vaddr, uint16_t val, uint32_t size)
+void farmemset(char_far ptr, uint32_t vaddr, uint16_t val, uint32_t size)
 {
     unsigned dummy;
     assert(!(size & 1)); // speed up memcpy
@@ -63,12 +63,12 @@ void farmemset(char __far *ptr, uint32_t vaddr, uint16_t val, uint32_t size)
           "xor %%edi, %%edi\n"
           ".arch i286\n"
         : "=c"(dummy), "=D"(dummy)
-        : "a"(val), "d"(FP_SEG(ptr)), "D"(FP_OFF(ptr)),
+        : "a"(val), "d"(__FP_SEG(ptr)), "D"(__FP_OFF(ptr)),
           [size]"m"(size), [offs]"m"(vaddr)
         : "memory");
 }
 
-long _long_read(int file, char __far *buf, unsigned long offset,
+long _long_read(int file, char_far buf, unsigned long offset,
     unsigned long size)
 {
     char tmp[PAGE_SIZE];

@@ -45,7 +45,7 @@ typedef struct
 } DPMI_FP;
 
 static unsigned short psp_sel;
-static char __far *client_memory;
+static char_far client_memory;
 static DPMI_FP clnt_entry;
 static _GO32_StubInfo stubinfo;
 
@@ -66,7 +66,7 @@ static void link_umb(int on)
 static void dpmi_init(void)
 {
     union REGPACK r = {};
-    void __far (*sw)(void);
+    char_far sw;
     unsigned mseg = 0, f;
     int err;
 
@@ -81,7 +81,7 @@ static void dpmi_init(void)
         fprintf(stderr, "DPMI-32 unavailable\n");
         exit(EXIT_FAILURE);
     }
-    sw = MK_FP(r.w.es, r.w.di);
+    sw = __MK_FP(r.w.es, r.w.di);
     if (r.w.si) {
         link_umb(1);
         err = _dos_allocmem(r.w.si, &mseg);
@@ -278,7 +278,7 @@ int main(int argc, char *argv[], char *envp[])
     mem_base = mem_lin - va;
     stubinfo.mem_base = mem_base;
     stub_debug("mem_lin 0x%lx mem_base 0x%lx\n", mem_lin, mem_base);
-    client_memory = MK_FP(clnt_ds, 0);
+    client_memory = __MK_FP(clnt_ds, 0);
     /* set base */
     asm volatile("int $0x31\n"
         :

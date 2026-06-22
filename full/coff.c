@@ -74,7 +74,7 @@ struct coff_h {
     uint32_t entry;
 };
 
-static void read_section(char __far *buf, int ifile, long coffset, int sc)
+static void read_section(char_far buf, int ifile, long coffset, int sc)
 {
     long bytes;
     lseek(ifile, coffset + scns[sc].s_scnptr, SEEK_SET);
@@ -148,7 +148,7 @@ static uint32_t get_coff_entry(void *handle)
     return h->entry;
 }
 
-static void read_coff_sections(void *handle, char __far *ptr, int ifile,
+static void read_coff_sections(void *handle, char_far ptr, int ifile,
         uint32_t offset)
 {
     struct coff_h *h = handle;

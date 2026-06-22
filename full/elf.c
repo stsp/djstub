@@ -115,7 +115,7 @@ static uint32_t get_elf_va(void *handle)
     return h->va;
 }
 
-static void read_elf_sections(void *handle, char __far *ptr, int ifile,
+static void read_elf_sections(void *handle, char_far ptr, int ifile,
         uint32_t offset)
 {
     struct elf_h *h = handle;
