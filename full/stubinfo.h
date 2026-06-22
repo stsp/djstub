@@ -13,7 +13,7 @@
 #define STUBINFO_PSP_SELECTOR 0x26
 #define STUBINFO_CS_SELECTOR 0x28
 #define STUBINFO_ENV_SIZE 0x2a
-#define STUBINFO_BASENAME 0x2c
+#define STUBINFO_RESERVED 0x2c
 #define STUBINFO_ARGV0 0x34
 #define STUBINFO_DPMI_SERVER 0x44
 #define STUBINFO_STUBINFO_VER 0x54
@@ -26,7 +26,13 @@
 #define STUBINFO_PAYLOAD2_SIZE 0x70
 #define STUBINFO_PAYLOAD2_NAME 0x74
 #define STUBINFO_MEM_BASE 0x88
-#define STUBINFO_END 0x8C
+#define STUBINFO_FLAGS 0x8C
+#define STUBINFO_UENTRY 0x90
+#define STUBINFO_CPL_FD 0x94
+#define STUBINFO_UPL_BASE 0x98
+#define STUBINFO_UPL_SIZE 0x9C
+#define STUBINFO_ELFLOAD_ARG 0xA0
+#define STUBINFO_END 0xA4
 #ifndef __ASSEMBLER__
 #include <stdint.h>
 typedef struct {
@@ -41,7 +47,7 @@ typedef struct {
   unsigned short psp_selector;
   unsigned short cs_selector;
   unsigned short env_size;
-  char basename[8];
+  char reserved[8];
   char argv0[16];
   char dpmi_server[16];
   /* standard djgpp stubinfo ends here */
@@ -55,9 +61,15 @@ typedef struct {
   int32_t payload2_size;
   char payload2_name[20];
   uint32_t mem_base;
+  uint32_t flags;
+  uint32_t uentry;
+  int32_t cpl_fd;
+  uint32_t upl_base;
+  uint32_t upl_size;
+  uint32_t elfload_arg;
 } _GO32_StubInfo;
-#endif
 
-static_assert(sizeof(_GO32_StubInfo) == STUBINFO_END, "size mismatch");
+_Static_assert(sizeof(_GO32_StubInfo) == STUBINFO_END, "size mismatch");
+#endif
 
 #endif /* __dj_include_stub_h__ */
