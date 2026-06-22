@@ -326,6 +326,13 @@ int main(int argc, char *argv[], char *envp[])
         "int $0x31\n"
         : "=a"(stubinfo_fs)
         : "a"(0xa));
+    /* set limit */
+    asm volatile("int $0x31\n"
+        :
+        : "a"(8), "b"(stubinfo_fs),
+          "c"(0),
+          "d"(sizeof(_GO32_StubInfo) - 1)
+        : "cc");
     stubinfo_mem = _DPMIGetSegmentBaseAddress(stubinfo_fs) +
             (uintptr_t)&stubinfo;
     mem_hi = stubinfo_mem >> 16;
@@ -355,7 +362,7 @@ int main(int argc, char *argv[], char *envp[])
     stub_debug("Jump to entry...\n");
     asm volatile(
           ".arch i386\n"
-          "mov %%ax, %%fs\n"
+          "mov %0, %%fs\n"
           "push %%ds\n"
           "pop %%es\n"
           "mov %1, %%ds\n"
