@@ -75,7 +75,7 @@ static void dpmi_init(void)
     intr(0x2f, &r);
     if ((r.w.flags & CF) || r.w.ax != 0) {
         fprintf(stderr, "DPMI unavailable\n");
-        exit(EXIT_FAILURE);
+        return;
     }
     if (!(r.w.bx & 1)) {
         fprintf(stderr, "DPMI-32 unavailable\n");
