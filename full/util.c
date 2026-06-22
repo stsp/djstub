@@ -18,7 +18,6 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <assert.h>
-#include <dos.h>
 #include "util.h"
 
 static void farmemcpy(char_far ptr, unsigned long offset, char *src,

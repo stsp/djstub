@@ -39,7 +39,7 @@ struct elf_h {
     uint32_t length;
     uint32_t entry;
     int phnum;
-    Elf32_Phdr phdr[0];
+    Elf32_Phdr phdr[1];
 };
 
 static void *read_elf_headers(int ifile)
