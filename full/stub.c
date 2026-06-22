@@ -100,7 +100,7 @@ static void dpmi_init(void)
         "push %%ds\n"
         "pop %%es\n"
         : "=r"(f), "=r"(psp_sel)
-        : "a"(1), [mseg]"r"(mseg), [sw]"m"(sw)
+        : "a"(0x501), [mseg]"r"(mseg), [sw]"m"(sw)
         : "cc", "memory");
     if (f & CF) {
         fprintf(stderr, "DPMI init failed\n");
