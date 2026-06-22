@@ -9,7 +9,7 @@ endif
 BINDIR ?= $(prefix)/bin
 CFLAGS ?= -Wall -Og -g
 # set to mini or full
-STYPE = mini
+STYPE ?= mini
 STUB = $(STYPE)stub.exe
 STUB_S = $(STYPE)stub.S
 CPPFLAGS += -DDJSTUB_VER=$(VER) \
