@@ -160,6 +160,7 @@ int main(int argc, char *argv[], char *envp[])
     dpmi_dos_block db;
     void *handle;
     struct ldops *ops = NULL;
+    uint8_t stub_ver = 0;
 
     if (argc == 0) {
         fprintf(stderr, "no env\n");
@@ -196,6 +197,8 @@ int main(int argc, char *argv[], char *envp[])
             memcpy(&nsize2, &buf[0x24], sizeof(nsize2));
             strncpy(stubinfo.payload2_name, &buf[0x30], 12);
             stubinfo.payload2_name[12] = '\0';
+            stub_ver = buf[0x3b];
+            stubinfo.stubinfo_ver |= (uint32_t)stub_ver << 16;
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
             ops = &coff_ops;
@@ -346,7 +349,7 @@ int main(int argc, char *argv[], char *envp[])
     lseek(ifile, noffset, SEEK_SET);
     if (nsize > 0)
         stub_debug("Found payload of size %li at 0x%lx\n", nsize, noffset);
-    stubinfo.stubinfo_ver = 2;
+    stubinfo.stubinfo_ver |= 2;
 
     stub_debug("Jump to entry...\n");
     asm volatile(
