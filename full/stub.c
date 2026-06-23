@@ -74,7 +74,7 @@ static void dpmi_init(void)
     r.w.ax = 0x1687;
     intr(0x2f, &r);
     if ((r.w.flags & CF) || r.w.ax != 0) {
-        fprintf(stderr, "DPMI unavailable\n");
+        stub_debug("DPMI unavailable\n");
         return;
     }
     if (!(r.w.bx & 1)) {
