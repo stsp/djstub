@@ -161,6 +161,7 @@ int main(int argc, char *argv[], char *envp[])
     void *handle;
     struct ldops *ops = NULL;
     uint8_t stub_ver = 0;
+    const char *fname = argv[0];
 
     if (argc == 0) {
         fprintf(stderr, "no env\n");
@@ -168,9 +169,21 @@ int main(int argc, char *argv[], char *envp[])
     }
     dpmi_init();
 
-    ifile = open(argv[0], O_RDONLY);
+    for (i = 0; envp && envp[i]; i++) {
+        const char *s = "ELFEXEC=";
+        int l = strlen(s);
+
+        if (strncmp(envp[i], s, l) == 0) {
+            fname = envp[i] + l;
+            done = 1;
+            ops = &elf_ops;
+            break;
+        }
+    }
+
+    ifile = open(fname, O_RDONLY);
     if (ifile == -1) {
-        fprintf(stderr, "cannot open %s\n", argv[0]);
+        fprintf(stderr, "cannot open %s\n", fname);
         exit(EXIT_FAILURE);
     }
     while (!done) {
