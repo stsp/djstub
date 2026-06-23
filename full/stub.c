@@ -75,6 +75,7 @@ static void dpmi_init(void)
     intr(0x2f, &r);
     if ((r.w.flags & CF) || r.w.ax != 0) {
         stub_debug("DPMI unavailable\n");
+        psp_sel = _psp;
         return;
     }
     if (!(r.w.bx & 1)) {
