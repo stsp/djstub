@@ -44,7 +44,7 @@ static void farmemcpy(char_far ptr, unsigned long offset, char *src,
         : "memory");
 }
 
-void farmemset(char_far ptr, uint32_t vaddr, uint16_t val, uint32_t size)
+void farmemset(char_far ptr, uint32_t vaddr, uint8_t val, uint32_t size)
 {
     unsigned dummy;
     assert(!(size & 1)); // speed up memcpy
@@ -56,6 +56,7 @@ void farmemset(char_far ptr, uint32_t vaddr, uint16_t val, uint32_t size)
           "movzwl %%di, %%edi\n"
           "add %[offs], %%edi\n"
           "shr $1, %%ecx\n"
+          "mov %%al, %%ah\n"
           "addr32 rep stosw\n"
           "pop %%es\n"
           "xor %%ecx, %%ecx\n"

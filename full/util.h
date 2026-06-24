@@ -19,7 +19,7 @@ typedef struct {
 #define __FP_SEG(f) (f).seg
 #define __FP_OFF(f) (f).off
 
-void farmemset(char_far ptr, uint32_t vaddr, uint16_t val, uint32_t size);
+void farmemset(char_far ptr, uint32_t vaddr, uint8_t val, uint32_t size);
 long _long_read(int file, char_far buf, unsigned long offset,
     unsigned long size);
 
