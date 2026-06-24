@@ -1,10 +1,10 @@
 TOP = ..
-PRG = fullstub.exe
+PRG = stub.exe
 TGT = $(TOP)/$(PRG)
 CC = smlrcc
 CFLAGS = -dosp
 LDFLAGS = -dosp
-CFILES = stub.c coff.c elf.c util.c dpmi.c
+CFILES = stub.c coff.c elf.c util.c dpmi.c ministub.c
 OBJECTS = $(CFILES:.c=.o)
 
 all: $(TGT)

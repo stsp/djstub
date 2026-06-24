@@ -1,6 +1,6 @@
 # djstub
 djstub project provides a dj64-compatible and go32-compatible
-stubs that support COFF, PE and ELF payloads.
+stub that support COFF, PE and ELF payloads.
 Its primary target is [dj64dev](https://github.com/stsp/dj64dev)
 suite, but it can also work with djgpp-built
 executables.
@@ -9,21 +9,6 @@ executables.
 - It can stubify or re-stub COFF and PE executables. See `djstubify`.
 - It can link the ELF binaries into a dj64 executables. See `djlink`.
 - It can strip the debug info from dj64 executables. See `djstrip`.
-
-## what stubs does it provide?
-There are 2 stubs available: [full](https://github.com/stsp/djstub/tree/main/full),
-which has all the loaders within, and
-[mini](https://github.com/stsp/djstub/tree/main/mini),
-which relies on a `"DJ64STUB"` DPMI extension, which is
-supposed to have the same loaders inside DPMI host.
-
-Full stub requires
-[gcc-ia16](https://gitlab.com/tkchia/gcc-ia16)
-to build, and is therefore currently not maintained.
-Mini stub uses [SmallerC](https://github.com/alexfru/SmallerC)
-and is actively maintained. If you want to use this
-project outside of dosemu2 (which means djgpp + bare-metal DOS or windows),
-you may need full stub. Otherwise, mini stub is enough.
 
 ## usage examples
 ```

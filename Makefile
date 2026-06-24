@@ -8,20 +8,18 @@ prefix ?= /usr/local
 endif
 BINDIR ?= $(prefix)/bin
 CFLAGS ?= -Wall -Og -g
-# set to mini or full
-STYPE ?= mini
-STUB = $(STYPE)stub.exe
-STUB_S = $(STYPE)stub.S
+STUB = stub.exe
+STUB_S = stub.S
 CPPFLAGS += -DDJSTUB_VER=$(VER) \
-  -D_binary_stub_exe_start=_binary_$(STYPE)stub_exe_start \
-  -D_binary_stub_exe_end=_binary_$(STYPE)stub_exe_end \
-  -D_binary_stub_exe_size=_binary_$(STYPE)stub_exe_size
+  -D_binary_stub_exe_start=_binary_stub_exe_start \
+  -D_binary_stub_exe_end=_binary_stub_exe_end \
+  -D_binary_stub_exe_size=_binary_stub_exe_size
 
 all: $(PROG)
 
-.PHONY: $(STYPE)
-$(STUB): $(STYPE)
-	$(MAKE) -C $<
+force:
+$(STUB): force
+	$(MAKE) -C src ../$@
 
 binstub.o: $(STUB_S) $(STUB)
 	$(CC) -c -o $@ $<
@@ -46,6 +44,5 @@ deb:
 	debuild -i -us -uc -b
 
 clean:
-	$(MAKE) -C full clean
-	$(MAKE) -C mini clean
+	$(MAKE) -C src clean
 	rm -f *.o $(STUB) $(PROG)
