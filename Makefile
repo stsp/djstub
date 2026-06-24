@@ -46,5 +46,6 @@ deb:
 	debuild -i -us -uc -b
 
 clean:
-	$(MAKE) -C $(STYPE) clean
+	$(MAKE) -C full clean
+	$(MAKE) -C mini clean
 	rm -f *.o $(STUB) $(PROG)
