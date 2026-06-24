@@ -22,7 +22,6 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <fcntl.h>
-#include <dos.h>
 #include <dpmi.h>
 #include <assert.h>
 #include "stubinfo.h"
@@ -68,7 +67,6 @@ static void dpmi_init(void)
     union REGPACK r = {};
     char_far sw;
     unsigned mseg = 0, f;
-    int err;
 
 #define CF 1
     r.w.ax = 0x1687;
@@ -84,6 +82,7 @@ static void dpmi_init(void)
     }
     sw = __MK_FP(r.w.es, r.w.di);
     if (r.w.si) {
+#if 0
         link_umb(1);
         err = _dos_allocmem(r.w.si, &mseg);
         link_umb(0);
@@ -91,6 +90,10 @@ static void dpmi_init(void)
             fprintf(stderr, "malloc of %i para failed\n", r.w.si);
             exit(EXIT_FAILURE);
         }
+#else
+        fprintf(stderr, "Invalid DPMI server\n");
+        exit(EXIT_FAILURE);
+#endif
     }
     asm volatile(
         "mov %[mseg], %%es\n"
