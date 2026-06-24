@@ -290,22 +290,6 @@ static const char *_basename(const char *name)
     return p;
 }
 
-#if 0
-static char *_fname(char *name)
-{
-    char *p, *p1;
-    p = strrchr(name, '\\');
-    if (!p)
-        p = name;
-    else
-        p++;
-    p1 = strrchr(p, '.');
-    if (p1)
-        p1[0] = '\0';
-    return p;
-}
-#endif
-
 int main(int argc, char *argv[], char *envp[])
 {
     int ifile;
