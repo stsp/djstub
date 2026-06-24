@@ -133,7 +133,7 @@ static void read_elf_sections(void *handle, char_far ptr, int ifile,
         if (bytes != phdr->p_filesz) {
             fprintf(stderr, "err reading %li bytes, got %li\n",
                     phdr->p_filesz, bytes);
-            _exit(EXIT_FAILURE);
+            exit(EXIT_FAILURE);
         }
         if (phdr->p_memsz > phdr->p_filesz) {
             uint32_t len = phdr->p_memsz - phdr->p_filesz;

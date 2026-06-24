@@ -84,7 +84,7 @@ static void read_section(char_far buf, int ifile, long coffset, int sc)
     if (bytes != scns[sc].s_size) {
         fprintf(stderr, "err reading %li bytes, got %li\n",
                 scns[sc].s_size, bytes);
-        _exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 }
 
