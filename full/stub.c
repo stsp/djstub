@@ -112,6 +112,7 @@ static void link_umb(int on)
 #ifndef __GNUC__
 extern void* __dpmi_psp;
 extern void* __dpmi_env;
+static char **envp;
 
 static unsigned short alloc_psp(void)
 {
@@ -199,6 +200,42 @@ static void jump_to_entry(unsigned stubinfo_fs, unsigned clnt_ds)
     "mov ds, [ebp + 12]\n"
     "jmp far dword [es:_clnt_entry]\n"
   );
+}
+
+static void setup_env(void)
+{
+  unsigned char *env = __dpmi_env;
+  int envc, i, letter;
+
+  for (envc = i = letter = 0;; i++) {
+    if (env[i] == '\0') {
+      letter = 0;
+      if (env[i + 1] == '\0')
+        break;
+    } else {
+      if (!letter) {
+        letter = 1;
+        envc++;
+      }
+    }
+  }
+  envp = malloc((envc + 1) * sizeof(char *));
+  envp[envc] = NULL;
+  if (envc) {
+    int envc2;
+    for (envc2 = i = letter = 0;; i++) {
+      if (env[i] == '\0') {
+        letter = 0;
+        if (env[i + 1] == '\0')
+          break;
+      } else {
+        if (!letter) {
+          letter = 1;
+          envp[envc2++] = &env[i];
+        }
+      }
+    }
+  }
 }
 #endif
 
@@ -290,7 +327,11 @@ static const char *_basename(const char *name)
     return p;
 }
 
-int main(int argc, char *argv[], char *envp[])
+int main(int argc, char *argv[]
+#ifdef __GNUC__
+        , char *envp[]
+#endif
+    )
 {
     int ifile;
     off_t coffset = 0;
@@ -323,6 +364,9 @@ int main(int argc, char *argv[], char *envp[])
         exit(EXIT_FAILURE);
     }
     dpmi_init();
+#ifndef __GNUC__
+    setup_env();
+#endif
 
     for (i = 0; envp && envp[i]; i++) {
         const char *s = "ELFEXEC=";
