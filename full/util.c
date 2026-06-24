@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <assert.h>
+#include "dpmi.h"
 #include "util.h"
 
 static void farmemcpy(char_far ptr, unsigned long offset, char *src,
@@ -25,6 +26,7 @@ static void farmemcpy(char_far ptr, unsigned long offset, char *src,
 {
     unsigned dummy;
     assert(!(length & 1)); // speed up memcpy
+#ifdef __GNUC__
     asm volatile(
           ".arch i386\n"
           "push %%es\n"
@@ -42,12 +44,20 @@ static void farmemcpy(char_far ptr, unsigned long offset, char *src,
         : "a"(0), "d"(__FP_SEG(ptr)), "D"(__FP_OFF(ptr)), "S"(src),
           [size]"m"(length), [offs]"m"(offset)
         : "memory");
+#else
+    uint32_t base;
+    int rc = dpmi_get_segment_base_address(__FP_SEG(ptr), &base);
+    assert(rc != -1);
+    base += __FP_OFF(ptr);
+    memcpy((char *)base + offset, src, length);
+#endif
 }
 
-void farmemset(char_far ptr, uint32_t vaddr, uint8_t val, uint32_t size)
+void farmemset(char_far ptr, uint32_t offset, uint8_t val, uint32_t size)
 {
     unsigned dummy;
     assert(!(size & 1)); // speed up memcpy
+#ifdef __GNUC__
     asm volatile(
           ".arch i386\n"
           "push %%es\n"
@@ -64,8 +74,15 @@ void farmemset(char_far ptr, uint32_t vaddr, uint8_t val, uint32_t size)
           ".arch i286\n"
         : "=c"(dummy), "=D"(dummy)
         : "a"(val), "d"(__FP_SEG(ptr)), "D"(__FP_OFF(ptr)),
-          [size]"m"(size), [offs]"m"(vaddr)
+          [size]"m"(size), [offs]"m"(offset)
         : "memory");
+#else
+    uint32_t base;
+    int rc = dpmi_get_segment_base_address(__FP_SEG(ptr), &base);
+    assert(rc != -1);
+    base += __FP_OFF(ptr);
+    memset((char *)base + offset, val, size);
+#endif
 }
 
 long _long_read(int file, char_far buf, unsigned long offset,
