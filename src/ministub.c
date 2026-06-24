@@ -26,7 +26,7 @@
 #include "stub_priv.h"
 
 #define DJSTUB_API_VER 5
-#define MINISTUB_VER 8
+#define MINISTUB_VER 9
 
 int __dpmi_int(int intno, __dpmi_int_regs* regs);
 

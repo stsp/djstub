@@ -35,6 +35,8 @@
 #include "stub.h"
 #include "stub_priv.h"
 
+#define LOADER_VER 3
+
 #define STUB_DEBUG 0
 #if STUB_DEBUG
 #define stub_debug(...) printf(__VA_ARGS__)
@@ -253,7 +255,7 @@ void fullstub(int argc, char *argv[], char *envp[])
     stub_debug("va 0x%lx va_size 0x%lx entry 0x%lx\n",
             va, va_size, clnt_entry.offset32);
 
-    strncpy(stubinfo.magic, "go32stub,v3,stsp", sizeof(stubinfo.magic));
+    strncpy(stubinfo.magic, "dj32ldr (C) stsp", sizeof(stubinfo.magic));
     stubinfo.size = sizeof(stubinfo);
     i = 3;
     while(envp && *envp) {
@@ -454,7 +456,7 @@ void fullstub(int argc, char *argv[], char *envp[])
     lseek(ifile, noffset, SEEK_SET);
     if (nsize > 0)
         stub_debug("Found payload of size %li at 0x%lx\n", nsize, noffset);
-    stubinfo.stubinfo_ver |= 2;
+    stubinfo.stubinfo_ver |= LOADER_VER;
 
     stub_debug("Jump to entry...\n");
 #ifdef __GNUC__
