@@ -18,7 +18,6 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -140,11 +139,10 @@ static void int2f(__dpmi_int_regs *r)
 
 static int dpmi_init(void)
 {
-    __dpmi_int_regs r;
+    __dpmi_int_regs r = {0};
     unsigned f;
 
 #define CF 1
-    memset(&r, 0, sizeof(r));
     r.eax = 0x1687;
     int2f(&r);
     if ((r.flags & CF) || r.eax != 0) {
@@ -181,7 +179,7 @@ int main(int argc, char *argv[])
   int envc, i, letter;
   int err;
   int fd;
-  __dpmi_int_regs regs;
+  __dpmi_int_regs regs = {0};
 
   if (argc == 0) {
     puts("no env");
@@ -246,7 +244,6 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  memset(&regs, 0, sizeof(regs));
   /* nuke out initial stub as it is no longer needed */
   assert(esp > 0x110000); /* not going to free own stack */
   regs.eax = 0x4a00;
