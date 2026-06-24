@@ -1,14 +1,14 @@
 # djstub
-djstub project provides a dj64-compatible and go32-compatible
+djstub project provides a dj64/dj32-compatible and go32-compatible
 stub that support COFF, PE and ELF payloads.
 Its primary target is [dj64dev](https://github.com/stsp/dj64dev)
 suite, but it can also work with djgpp-built
-executables.
+executables or plain COFF and ELF files.
 
 ## what it does?
 - It can stubify or re-stub COFF and PE executables. See `djstubify`.
-- It can link the ELF binaries into a dj64 executables. See `djlink`.
-- It can strip the debug info from dj64 executables. See `djstrip`.
+- It can link the ELF binaries into a dj64/dj32 executables. See `djlink`.
+- It can strip the debug info from dj64/dj32 executables. See `djstrip`.
 
 ## usage examples
 ```
