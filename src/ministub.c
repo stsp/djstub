@@ -22,33 +22,11 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <assert.h>
+#include "util.h"
 #include "stub_priv.h"
 
 #define DJSTUB_API_VER 5
 #define MINISTUB_VER 8
-
-typedef struct
-{
-  unsigned long  edi;
-  unsigned long  esi;
-  unsigned long  ebp;
-  unsigned long  resrvd;
-  unsigned long  ebx;
-  unsigned long  edx;
-  unsigned long  ecx;
-  unsigned long  eax;
-  unsigned short flags;
-  unsigned short es;
-  unsigned short ds;
-  unsigned short fs;
-  unsigned short gs;
-  unsigned short ip;
-  unsigned short cs;
-  unsigned short sp;
-  unsigned short ss;
-} __dpmi_int_regs;
-
-static unsigned short psp;
 
 int __dpmi_int(int intno, __dpmi_int_regs* regs);
 
@@ -91,82 +69,6 @@ static int enter_stub(unsigned sel, unsigned off,
     "call far [ss:esp]\n"
     "add esp, 8\n"
   );
-}
-
-static unsigned lcall(unsigned sel, unsigned off, unsigned ax)
-{
-  asm(
-    "push es\n"
-    "push dword [ebp+8]\n "  // sel
-    "push dword [ebp+12]\n"  // off
-    "mov eax, [ebp+16]\n"    // ax
-    "call far [ss:esp]\n"
-    "pop eax\n"
-    "pop eax\n"
-    "pushf\n"
-    "pop eax\n"
-    "mov [_psp], es\n"
-    "pop es\n"
-  );
-}
-
-static void int2f(__dpmi_int_regs *r)
-{
-  asm(
-    "push es\n"
-    "mov ebx, [ebp+8]\n"
-    "mov edi, [ebx]\n"
-    "mov esi, [ebx+4]\n"
-    "mov edx, [ebx+20]\n"
-    "mov ecx, [ebx+24]\n"
-    "mov eax, [ebx+28]\n"
-    "mov ebx, [ebx+16]\n"
-    "stc\n"
-    "int 0x2f\n"
-    "push ebx\n"
-    "mov ebx, [ebp+8]\n"
-    "pop dword [ebx+16]\n"
-    "pushfw\n"
-    "pop word [ebx+32]\n"
-    "mov [ebx], edi\n"
-    "mov [ebx+4], esi\n"
-    "mov [ebx+20], edx\n"
-    "mov [ebx+24], ecx\n"
-    "mov [ebx+28], eax\n"
-    "mov [ebx+34], es\n"
-    "mov [ebx+36], ds\n"
-    "mov [ebx+38], fs\n"
-    "mov [ebx+40], gs\n"
-    "pop es\n"
-  );
-}
-
-static void dpmi_init(void)
-{
-    __dpmi_int_regs r = {0};
-    unsigned f;
-
-#define CF 1
-    r.eax = 0x1687;
-    int2f(&r);
-    if ((r.flags & CF) || r.eax != 0) {
-        fprintf(stderr, "DPMI unavailable\n");
-        exit(EXIT_FAILURE);
-        return;
-    }
-    if (!(r.ebx & 1)) {
-        fprintf(stderr, "DPMI-32 unavailable\n");
-        exit(EXIT_FAILURE);
-    }
-    if (r.esi) {
-        fprintf(stderr, "invalid DPMI server, %i para requested\n", r.esi);
-        exit(EXIT_FAILURE);
-    }
-    f = lcall(r.es, r.edi, 1);
-    if (f & CF) {
-        fprintf(stderr, "DPMI init failed\n");
-        exit(EXIT_FAILURE);
-    }
 }
 
 extern void* __dpmi_psp;
@@ -238,8 +140,12 @@ int main(int argc, char *argv[])
   regs.es = (unsigned)__dpmi_psp >> 4;
   __dpmi_int(0x21, &regs);
   /* try to nuke PM part as well */
-  dpmi_init();
-  err = enter_stub(sel, off, argc, argv, envc, envp, psp, fd,
+  err = dpmi_init();
+  if (err) {
+    fprintf(stderr, "DPMI unavailable\n");
+    return EXIT_FAILURE;
+  }
+  err = enter_stub(sel, off, argc, argv, envc, envp, psp_sel, fd,
       DJSTUB_API_VER | (MINISTUB_VER << 8));
   close(fd);
   puts("stub returned");
