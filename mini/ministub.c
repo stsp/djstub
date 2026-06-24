@@ -47,6 +47,8 @@ typedef struct
   unsigned short ss;
 } __dpmi_int_regs;
 
+static unsigned short psp;
+
 int __dpmi_int(int intno, __dpmi_int_regs* regs);
 
 int DPMIQueryExtension(unsigned short *sel, unsigned short *off,
@@ -102,6 +104,7 @@ static unsigned lcall(unsigned sel, unsigned off, unsigned ax)
     "pop eax\n"
     "pushf\n"
     "pop eax\n"
+    "mov [_psp], es\n"
     "pop es\n"
   );
 }
@@ -137,7 +140,7 @@ static void int2f(__dpmi_int_regs *r)
   );
 }
 
-static int dpmi_init(void)
+static void dpmi_init(void)
 {
     __dpmi_int_regs r = {0};
     unsigned f;
@@ -147,27 +150,26 @@ static int dpmi_init(void)
     int2f(&r);
     if ((r.flags & CF) || r.eax != 0) {
         fprintf(stderr, "DPMI unavailable\n");
-        return -1;
+        exit(EXIT_FAILURE);
+        return;
     }
     if (!(r.ebx & 1)) {
         fprintf(stderr, "DPMI-32 unavailable\n");
-        return -1;
+        exit(EXIT_FAILURE);
     }
     if (r.esi) {
         fprintf(stderr, "invalid DPMI server, %i para requested\n", r.esi);
-        return -1;
+        exit(EXIT_FAILURE);
     }
     f = lcall(r.es, r.edi, 1);
     if (f & CF) {
         fprintf(stderr, "DPMI init failed\n");
-        return -1;
+        exit(EXIT_FAILURE);
     }
-    return 0;
 }
 
 extern void* __dpmi_psp;
 extern void* __dpmi_env;
-static unsigned short psp;
 static unsigned esp;
 
 int main(int argc, char *argv[])
@@ -214,24 +216,6 @@ int main(int argc, char *argv[])
       }
     }
   }
-  asm(
-    "mov eax, 0\n"    // alloc desc for PSP
-    "mov ecx, 1\n"    // 1 desc
-    "int 31h\n"
-    "mov [_psp], ax\n"
-    "mov eax, 7\n"    // set base
-    "mov bx, [_psp]\n"
-    "extern  ___dpmi_psp\n"
-    "mov cx, [___dpmi_psp + 2]\n"
-    "mov dx, [___dpmi_psp]\n"
-    "int 31h\n"
-    "mov eax, 8\n"    // set limit
-    "mov bx, [_psp]\n"
-    "mov cx, 0\n"
-    "mov dx, 0ffh\n"  // to PSP size
-    "int 31h\n"
-    "mov [_esp], esp\n"
-  );
   err = DPMIQueryExtension(&sel, &off, ext_nm);
   if (err) {
     printf("%s unsupported (%x)\n", ext_nm, err);
@@ -245,6 +229,7 @@ int main(int argc, char *argv[])
   }
 
   /* nuke out initial stub as it is no longer needed */
+  asm("mov [_esp], esp\n");
   assert(esp > 0x110000); /* not going to free own stack */
   regs.eax = 0x4a00;
   regs.ebx = 0x10;  // leave only PSP
