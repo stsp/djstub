@@ -10,10 +10,7 @@ BINDIR ?= $(prefix)/bin
 CFLAGS ?= -Wall -Og -g
 STUB = stub.exe
 STUB_S = stub.S
-CPPFLAGS += -DDJSTUB_VER=$(VER) \
-  -D_binary_stub_exe_start=_binary_stub_exe_start \
-  -D_binary_stub_exe_end=_binary_stub_exe_end \
-  -D_binary_stub_exe_size=_binary_stub_exe_size
+CPPFLAGS += -DDJSTUB_VER=$(VER)
 
 all: $(PROG)
 
