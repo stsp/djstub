@@ -1,5 +1,5 @@
 PROG = djstubify
-VER = 7
+VER = 8
 # on Termux PREFIX is used
 ifneq ($(PREFIX),)
 prefix := $(PREFIX)
