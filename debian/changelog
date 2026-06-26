@@ -1,3 +1,10 @@
+djstub (0.8-1) resolute; urgency=low
+
+  * 0.8
+  * full dj32 support and dosbox compatibility
+
+ -- Stas Sergeev <stsp@users.sourceforge.net>  Fri, 26 Jun 2026 10:30:00 +0300
+
 djstub (0.7.1-1) resolute; urgency=low
 
   * minimal dj32 support pre-release
