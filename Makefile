@@ -21,6 +21,8 @@ $(STUB): force
 binstub.o: $(STUB_S) $(STUB)
 	$(CC) -c -o $@ $<
 
+stubify.o: Makefile
+
 $(PROG): stubify.o binstub.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
