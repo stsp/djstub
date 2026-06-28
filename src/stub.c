@@ -195,6 +195,7 @@ void fullstub(int argc, char *argv[], char *envp[])
             fname = envp[i] + l;
             done = 1;
             ops = &elf_ops;
+            stubinfo.flags |= SIFLG_ELFEXEC;
             break;
         }
     }
