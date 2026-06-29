@@ -52,8 +52,7 @@ static int rmstub;
 #define MAX_OVL 5
 static char *overlay[MAX_OVL];
 static int strip;
-static uint8_t stub_ver = 6;
-static uint8_t flags_ver = 0;
+static uint8_t stub_ver = 7;
 static const int version = DJSTUB_VER;
 
 static int copy_file(const char *ovl, int ofile)
@@ -215,13 +214,8 @@ static int coff2exe(const char *fname, const char *oname, int info)
         int stub_v4 = (buf[0x3b] >= 4 && buf[0x3b] < 0x20);
         int stub_v6 = stub_v4 && buf[0x3b] >= 6;
 
-        if (stub_v6) {
-          flags_ver = buf[0x3a];
+        if (stub_v6)
           memcpy(&flags, &buf[0x38], sizeof(flags));
-        } else if (stub_v4) {
-          flags_ver = buf[0x3b];
-          memcpy(&flags, &buf[0x2c], sizeof(flags));
-        }
         if (stub_v4 && (flags & 0x80))
           dyn++;
         if (stub_v6 && (flags & 0x2000))
@@ -351,7 +345,6 @@ static int coff2exe(const char *fname, const char *oname, int info)
     memcpy(_binary_stub_exe_start + 0x1c, &coff_file_size,
           sizeof(coff_file_size));
   }
-  _binary_stub_exe_start[0x3a] = flags_ver;
   _binary_stub_exe_start[0x3b] = stub_ver;
   memcpy(_binary_stub_exe_start + 0x3c, &stub_size, sizeof(stub_size));
 
@@ -427,7 +420,6 @@ static void print_help(void)
 	  "-n <offs> -> write name offset into an overlay info\n"
 	  "-o <name> -> write output into <name>\n"
 	  "-f <flags> -> write <flags> into an overlay info\n"
-	  "-V <flags_ver> -> write <flags_ver> into flags version field\n"
 	  "-g -> generate a new file\n"
   );
 }
@@ -493,13 +485,6 @@ int main(int argc, char **argv)
     case 'o':
       oname = optarg;
       break;
-    case 'V':
-      flags_ver = atoi(optarg);
-      if (!flags_ver) {
-        fprintf(stderr, "Bad stub version: %s\n", optarg);
-        return 1;
-      }
-      break;
     default:
       fprintf(stderr, "Unknown option: %c\n", c);
       print_help();
@@ -540,7 +525,6 @@ int main(int argc, char **argv)
     }
     memcpy(_binary_stub_exe_start + 0x28, &nmoffs, sizeof(nmoffs));
     memcpy(_binary_stub_exe_start + 0x38, &stub_flags, sizeof(stub_flags));
-    _binary_stub_exe_start[0x3a] = flags_ver;
     _binary_stub_exe_start[0x3b] = stub_ver;
     memcpy(_binary_stub_exe_start + 0x3c, &stub_size, sizeof(stub_size));
 
