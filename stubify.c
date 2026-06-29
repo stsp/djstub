@@ -213,6 +213,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
         int dj32 = 0;
         int stub_v4 = (buf[0x3b] >= 4 && buf[0x3b] < 0x20);
         int stub_v6 = stub_v4 && buf[0x3b] >= 6;
+        int stub_v7 = stub_v6 && buf[0x3b] >= 7;
 
         if (stub_v6)
           memcpy(&flags, &buf[0x38], sizeof(flags));
@@ -247,7 +248,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
             sz = sz0;
             if (!cnt) {
               has_o0++;
-              if (stub_v6) {
+              if (stub_v6 && !stub_v7) {
                 memcpy(&ooffs, &buf[0x2c], sizeof(ooffs));
                 offs += ooffs;
               }
@@ -492,7 +493,6 @@ int main(int argc, char **argv)
     }
     if (noverlay) {
       struct stat sb;
-      int dyn = 0;
       /* store overlay sizes in overlay info */
       for (i = 0; i < noverlay; i++) {
         int rc = stat(overlay[i], &sb);
@@ -501,7 +501,7 @@ int main(int argc, char **argv)
               strerror(errno));
           return EXIT_FAILURE;
         }
-        memcpy(_binary_stub_exe_start + 0x1c + (i + dyn) * 4, &sb.st_size, 4);
+        memcpy(_binary_stub_exe_start + 0x1c + i * 4, &sb.st_size, 4);
       }
     }
     memcpy(_binary_stub_exe_start + 0x28, &nmoffs, sizeof(nmoffs));
