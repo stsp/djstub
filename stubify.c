@@ -432,8 +432,6 @@ int main(int argc, char **argv)
   int c;
   int noverlay = 0;
   uint32_t nmoffs = 0;
-  uint32_t osize = 0;
-  uint32_t ooffs = 0;
   uint16_t stub_flags = 0;
   int rc;
 
@@ -460,9 +458,6 @@ int main(int argc, char **argv)
     case 'r':
       rmstub = 1;
       break;
-    case 'S':
-      osize = strtol(optarg, NULL, 0);
-      break;
     case 's':
       strip = 1;
       break;
@@ -478,9 +473,6 @@ int main(int argc, char **argv)
       break;
     case 'f':
       stub_flags |= strtol(optarg, NULL, 0);
-      break;
-    case 'O':
-      ooffs = strtol(optarg, NULL, 0);
       break;
     case 'o':
       oname = optarg;
@@ -506,10 +498,6 @@ int main(int argc, char **argv)
     if (noverlay) {
       struct stat sb;
       int dyn = 0;
-      if (osize) {
-        memcpy(_binary_stub_exe_start + 0x1c, &osize, 4);
-        dyn++;
-      }
       /* store overlay sizes in overlay info */
       for (i = 0; i < noverlay; i++) {
         int rc = stat(overlay[i], &sb);
@@ -520,8 +508,6 @@ int main(int argc, char **argv)
         }
         memcpy(_binary_stub_exe_start + 0x1c + (i + dyn) * 4, &sb.st_size, 4);
       }
-      if (ooffs)
-        memcpy(_binary_stub_exe_start + 0x2c, &ooffs, 4);
     }
     memcpy(_binary_stub_exe_start + 0x28, &nmoffs, sizeof(nmoffs));
     memcpy(_binary_stub_exe_start + 0x38, &stub_flags, sizeof(stub_flags));

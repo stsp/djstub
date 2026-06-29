@@ -87,23 +87,6 @@ if [ -n "$D" ]; then
   DOPT="-n $OFFS -l $DBG"
 fi
 
-if test "$OS" == "Darwin"; then
-  ID="`LC_ALL=C llvm-readobj -W -S $SO | grep -A 4 .dj64startup`"
-else
-  ID="`LC_ALL=C $READELF -W -S $SO | grep .dj64startup | sed -E -e 's/.+\] +//' | \
-    tr -s '[:space:]'`"
-fi
-if [ -n "$ID" ]; then
-  if test "$OS" == "Darwin"; then
-    SZ=`echo "$ID" | grep Size | sed -e 's/.* //'`
-    OFF=`echo "$ID" | grep Offset | sed -e 's/.* //'`
-  else
-    SZ=`echo "$ID" | cut -d " " -f 5 | sed -E -e 's/0*/0x/'`
-    OFF=`echo "$ID" | cut -d " " -f 4 | sed -E -e 's/0*/0x/'`
-  fi
-  DOPT="$DOPT -S $SZ -O $OFF -f 0x8000"
-fi
-
 CMD="djstubify -g $* -l $SO $DOPT"
 #echo "$CMD"
 $CMD
