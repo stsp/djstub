@@ -216,7 +216,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
 
         if (stub_v6)
           memcpy(&flags, &buf[0x38], sizeof(flags));
-        if (stub_v4 && (flags & 0x80))
+        if (stub_v6 && !(flags & 0x4000))
           dyn++;
         if (stub_v6 && (flags & 0x2000))
           dj32++;
