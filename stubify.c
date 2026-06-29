@@ -237,7 +237,6 @@ static int coff2exe(const char *fname, const char *oname, int info)
         }
         if (info || rmoverlay) {
           int cnt = 0;
-          int embl = 0;
           uint32_t sz = 0;
           char name[20] = {};
           for (i = 0x1c; i < 0x28; i += 4) {
@@ -252,10 +251,6 @@ static int coff2exe(const char *fname, const char *oname, int info)
                 memcpy(&ooffs, &buf[0x2c], sizeof(ooffs));
                 offs += ooffs;
               }
-            }
-            if (stub_v6 && cnt == 1 && (flags & 0x8000)) {
-              offs = coffset;
-              embl = 1;
             }
             if (info) {
               int prname = 0;
@@ -280,8 +275,8 @@ static int coff2exe(const char *fname, const char *oname, int info)
           }
           if (rmstub) {
             /* rmstub removes all overlays */
-            memcpy(&coff_file_size, &buf[0x1c + embl * 4], sizeof(coff_file_size));
-          } else if (strip && cnt > 1 + embl) {
+            memcpy(&coff_file_size, &buf[0x1c + dyn * 4], sizeof(coff_file_size));
+          } else if (strip && cnt > 1 + dyn) {
             coff_file_size = offs - sz - coffset;
             memset(&mzhdr_buf[i - 4], 0, 4);
           }
