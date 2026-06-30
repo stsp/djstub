@@ -253,6 +253,8 @@ static int coff2exe(const char *fname, const char *oname, int info)
                 offs += ooffs;
               }
             }
+            if (stub_v6 && !stub_v7 && cnt == 1 && (flags & 0x8000))
+              offs = coffset;
             if (info) {
               int prname = 0;
               if (stub_v6 && !dj32 && cnt + dyn == 1 && buf[0x28]) {
