@@ -232,6 +232,8 @@ void fullstub(int argc, char *argv[], char *envp[])
             stubinfo.payload2_name[12] = '\0';
             stub_ver = buf[0x3b];
             stubinfo.stubinfo_ver |= (uint32_t)stub_ver << 16;
+            /* overwrite only 2 lower bytes of flags */
+            memcpy(&stubinfo.flags, &buf[0x38], 2);
         } else if (buf[0] == 0x4c && buf[1] == 0x01) { /* it's a COFF */
             done = 1;
             ops = &coff_ops;
