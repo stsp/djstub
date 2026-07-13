@@ -1,6 +1,6 @@
 /*
  *  go32-compatible COFF, PE32 and ELF loader stub.
- *  Copyright (C) 2022,  stsp <stsp@users.sourceforge.net>
+ *  Copyright (C) 2022-2026  stsp <stsp@users.sourceforge.net>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
