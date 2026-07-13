@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
   }
   err = DPMIQueryExtension(&sel, &off, ext_nm);
   if (err) {
-    printf("warning: %s unsupported (%x), using builtin loader...\n", ext_nm, err);
+    printf("warning: %s unsupported, using builtin loader...\n", ext_nm);
     fullstub(argc, argv, envp);
     return EXIT_FAILURE;
   }
