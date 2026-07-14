@@ -279,7 +279,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
           if (rmstub) {
             /* rmstub removes all overlays */
             memcpy(&coff_file_size, &buf[0x1c + (dj32 ? 0 : !dyn) * 4], sizeof(coff_file_size));
-          } else if (strip && cnt > !dj32 + !dyn) {
+          } else if (strip && cnt > 1 + (dj32 ? 0 : !dyn)) {
             coff_file_size = offs - sz - coffset;
             memset(&mzhdr_buf[i - 4], 0, 4);
           }
