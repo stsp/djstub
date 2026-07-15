@@ -411,6 +411,7 @@ static void print_help(void)
 	  "Options:\n"
 	  "-h -> print this help\n"
 	  "-v -> print version\n"
+	  "-V -> request minimum stub version\n"
 	  "-d -> verbose messages for debugging\n"
 	  "-i -> display file info\n"
 	  "-s -> strip last overlay\n"
@@ -432,7 +433,7 @@ int main(int argc, char **argv)
   int noverlay = 0;
   uint32_t nmoffs = 0;
   uint16_t stub_flags = 0;
-  int rc;
+  int rc, req_ver = 0;
 
   if (_binary_stub_exe_start[0] != 'M' || _binary_stub_exe_start[1] != 'Z' ||
         _binary_stub_exe_start[8] != 4 || _binary_stub_exe_start[9] != 0) {
@@ -444,10 +445,27 @@ int main(int argc, char **argv)
   {
     switch (c) {
     case 'v':
-#define _S(x) #x
-#define S(x) _S(x)
       printf("djstubify version 0.%i\n", version);
       return 0;
+    case 'V':
+      req_ver = atoi(optarg);
+      if (!req_ver) {
+        fprintf(stderr, "bad -V value %s\n", optarg);
+        return 1;
+      } else if (req_ver > stub_ver) {
+        fprintf(stderr, "requested stub ver %i but supported only %i\n",
+            req_ver, stub_ver);
+        return 1;
+      } else if (req_ver == stub_ver - 1) {
+        fprintf(stderr, "requested stub ver %i but supported is %i\n",
+            req_ver, stub_ver);
+        stub_ver = req_ver;
+      } else if (req_ver < stub_ver - 1) {
+        fprintf(stderr, "requested old stub ver %i, supported is %i\n",
+            req_ver, stub_ver);
+        return 1;
+      }
+      break;
     case 'd':
       verbose = 1;
       break;
@@ -483,6 +501,12 @@ int main(int argc, char **argv)
       fprintf(stderr, "Unknown option: %c\n", c);
       print_help();
       return 1;
+    }
+  }
+  if (!req_ver && stub_ver >= 8) {
+    if (stub_ver == 8) {
+      stub_ver = 7;  // backward-compat
+      stub_flags &= ~0x80;  // this flag re-used in v8, so clear
     }
   }
 
