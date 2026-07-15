@@ -417,6 +417,7 @@ static void print_help(void)
 	  "-s -> strip last overlay\n"
 	  "-r -> remove stub (and overlay, if any)\n"
 	  "-l <file_name> -> link in <file_name> file as an overlay\n"
+	  "-t <type> -> set type of next link segment\n"
 	  "-n <offs> -> write name offset into an overlay info\n"
 	  "-o <name> -> write output into <name>\n"
 	  "-f <flags> -> write <flags> into an overlay info\n"
@@ -433,6 +434,8 @@ int main(int argc, char **argv)
   int noverlay = 0;
   uint32_t nmoffs = 0;
   uint16_t stub_flags = 0;
+  uint16_t type_map = 0;
+  int type, type_shift = 0;
   int rc, req_ver = 0;
 
   if (_binary_stub_exe_start[0] != 'M' || _binary_stub_exe_start[1] != 'Z' ||
@@ -441,7 +444,7 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  while ((c = getopt(argc, argv, "dhvV:irsgl:o:n:f:")) != -1)
+  while ((c = getopt(argc, argv, "dhvV:irsgl:t:o:n:f:")) != -1)
   {
     switch (c) {
     case 'v':
@@ -484,6 +487,15 @@ int main(int argc, char **argv)
     case 'l':
       assert(noverlay < MAX_OVL);
       overlay[noverlay++] = optarg;
+      type_shift += 4;
+      break;
+    case 't':
+      type = atoi(optarg);
+      if (!type) {
+          fprintf(stderr, "wrong -t value %s\n", optarg);
+          return 1;
+      }
+      type_map |= type << type_shift;
       break;
     case 'n':
       nmoffs = strtol(optarg, NULL, 0);
@@ -535,6 +547,7 @@ int main(int argc, char **argv)
       }
     }
     memcpy(_binary_stub_exe_start + 0x28, &nmoffs, sizeof(nmoffs));
+    memcpy(_binary_stub_exe_start + 0x36, &type_map, sizeof(type_map));
     memcpy(_binary_stub_exe_start + 0x38, &stub_flags, sizeof(stub_flags));
     _binary_stub_exe_start[0x3b] = stub_ver;
     memcpy(_binary_stub_exe_start + 0x3c, &stub_size, sizeof(stub_size));
