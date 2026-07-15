@@ -440,7 +440,7 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  while ((c = getopt(argc, argv, "dhvV:irS:sgl:O:o:n:f:")) != -1)
+  while ((c = getopt(argc, argv, "dhvV:irsgl:o:n:f:")) != -1)
   {
     switch (c) {
     case 'v':
