@@ -52,7 +52,7 @@ static int rmstub;
 #define MAX_OVL 5
 static char *overlay[MAX_OVL];
 static int strip;
-static uint8_t stub_ver = 7;
+static uint8_t stub_ver = 8;
 static const int version = DJSTUB_VER;
 
 static int copy_file(const char *ovl, int ofile)
