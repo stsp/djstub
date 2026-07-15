@@ -34,10 +34,15 @@ if [ "$#" -lt 1 ]; then
   echo "Usage: djlink [-d <debug_name>] <solib_name> [<djstubify_opts>]"
   exit 0
 fi
-while getopts "d:v" opt; do
+D=
+T=
+while getopts "d:vT:" opt; do
   case "$opt" in
     d)
       D="$OPTARG"
+      ;;
+    T)
+      T="-t $OPTARG"
       ;;
     v)
       djstubify -v
@@ -84,10 +89,10 @@ if [ -n "$D" ]; then
       tr -s '[:space:]' | cut -d " " -f 6 | sed -E -e 's/0*/0x/'`
   fi
   SO=$TMP
-  DOPT="-n $OFFS -l $DBG"
+  DOPT="-n $OFFS -t 4 -l $DBG"
 fi
 
-CMD="djstubify -g $* -l $SO $DOPT"
+CMD="djstubify -g $* $T -l $SO $DOPT"
 #echo "$CMD"
 $CMD
 
