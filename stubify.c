@@ -409,6 +409,7 @@ static void print_help(void)
   fprintf(stderr, "Usage: stubify [-v] [-l <overlay>] [-o <out_file>] <program>\n\n"
 	  "<program> may be COFF or stubbed .exe.\n\n"
 	  "Options:\n"
+	  "-h -> print this help\n"
 	  "-v -> print version\n"
 	  "-d -> verbose messages for debugging\n"
 	  "-i -> display file info\n"
@@ -439,7 +440,7 @@ int main(int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  while ((c = getopt(argc, argv, "dvV:irS:sgl:O:o:n:f:")) != -1)
+  while ((c = getopt(argc, argv, "dhvV:irS:sgl:O:o:n:f:")) != -1)
   {
     switch (c) {
     case 'v':
@@ -475,6 +476,9 @@ int main(int argc, char **argv)
     case 'o':
       oname = optarg;
       break;
+    case 'h':
+      print_help();
+      return 0;
     default:
       fprintf(stderr, "Unknown option: %c\n", c);
       print_help();
