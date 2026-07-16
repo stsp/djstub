@@ -515,7 +515,7 @@ int main(int argc, char **argv)
       return 1;
     }
   }
-  if (!req_ver && stub_ver >= 8) {
+  if (!req_ver && stub_ver >= 8 && noverlay) {
     if (stub_ver == 8) {
       stub_ver = 7;  // backward-compat
       stub_flags &= ~0x80;  // this flag re-used in v8, so clear
