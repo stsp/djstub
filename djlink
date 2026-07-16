@@ -36,10 +36,14 @@ if [ "$#" -lt 1 ]; then
 fi
 D=
 T=
-while getopts "d:vT:" opt; do
+TD=
+while getopts "d:vT:D:" opt; do
   case "$opt" in
     d)
       D="$OPTARG"
+      ;;
+    D)
+      TD="-t $OPTARG"
       ;;
     T)
       T="-t $OPTARG"
@@ -90,7 +94,7 @@ if [ -n "$D" ]; then
       cut -d " " -f 3 | sed -E -e 's/0*/0x/'`
   fi
   SO=$TMP
-  DOPT="-n $OFFS -t 4 -l $DBG"
+  DOPT="-n $OFFS $TD -l $DBG"
 fi
 
 CMD="djstubify -g $* $T -l $SO $DOPT"
