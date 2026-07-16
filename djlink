@@ -86,7 +86,8 @@ if [ -n "$D" ]; then
     $STRIP -o $TMP $SO
     $OBJCOPY --add-gnu-debuglink=$DBG $TMP
     OFFS=`LC_ALL=C $READELF -S $TMP | grep .gnu_debuglink | \
-      tr -s '[:space:]' | cut -d " " -f 6 | sed -E -e 's/0*/0x/'`
+      tr -s '[:space:]' | sed -E -e 's/.+ .gnu_debuglink (.+)$$/\1/' | \
+      cut -d " " -f 3 | sed -E -e 's/0*/0x/'`
   fi
   SO=$TMP
   DOPT="-n $OFFS -t 4 -l $DBG"
