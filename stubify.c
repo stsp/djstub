@@ -80,10 +80,15 @@ static int copy_file(const char *ovl, int ofile)
   return ret;
 }
 
+enum { OT_COFF, OT_DJ32, OT_E32, OT_E64, OT_D64, OT_D32, OT_MAX };
+
 static const char *payload_dsc[] = {
-  "%s DOS payload",
-  "%s/ELF host payload",
-  "%s/ELF debug info",
+  [OT_COFF] = "i386/COFF DOS payload",
+  [OT_DJ32] = "%s/ELF (dj32) DOS payload",
+  [OT_E32] = "%s/ELF (dj64) DOS payload",
+  [OT_E64] = "%s/ELF host payload",
+  [OT_D64] = "%s/ELF debug info",
+  [OT_D32] = "%s/ELF (dj32) debug info",
 };
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -128,17 +133,11 @@ static const char *elf_id(int fd, long offs)
 
 static const char *identify(int num, int fd, long offs)
 {
-  switch (num) {
-    case 0:
-      return payload_dsc[num];
-    case 1:
-    case 2: {
-      static char ret[256];
-      snprintf(ret, sizeof(ret), payload_dsc[num], elf_id(fd, offs));
-      return ret;
-    }
-  }
-  return "???";
+  static char ret[256];
+  if (num == OT_COFF || num >= OT_MAX)
+    return "???";
+  snprintf(ret, sizeof(ret), payload_dsc[num], elf_id(fd, offs));
+  return ret;
 }
 
 static int move_tmp(const char *src, const char *dst)
@@ -147,7 +146,7 @@ static int move_tmp(const char *src, const char *dst)
   if (err && errno == EXDEV) {
     int fd = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd == -1) {
-      perror("open()");
+      fprintf(stderr, "open(%s): %s\n", dst, strerror(errno));
       return -1;
     }
     copy_file(src, fd);
@@ -165,10 +164,56 @@ static int move_tmp(const char *src, const char *dst)
   return 0;
 }
 
+static int find_idx(int type, char *buf)
+{
+    uint16_t type_map;
+    int cnt = 0;
+    memcpy(&type_map, &buf[0x36], sizeof(type_map));
+    if (type == 0 && type_map == 0)
+        return 0;
+    while (type_map) {
+        uint8_t t = type_map & 0xf;
+        if (t == type)
+            return cnt;
+        type_map >>= 4;
+        cnt++;
+    }
+    return -1;
+}
+
+static int find_size(int type, char *buf)
+{
+    uint32_t size;
+    int idx = find_idx(type, buf);
+    if (idx == -1)
+        return -1;
+    memcpy(&size, &buf[0x1c + idx * 4], sizeof(size));
+    return size;
+}
+
+static int find_offs(int type, char *buf)
+{
+    uint16_t type_map;
+    int offs = 0, cnt = 0;
+    memcpy(&type_map, &buf[0x36], sizeof(type_map));
+    if (type == 0 && type_map == 0)
+        return 0;
+    while (type_map) {
+        uint32_t off;
+        uint8_t t = type_map & 0xf;
+        if (t == type)
+            return offs;
+        memcpy(&off, &buf[0x1c + cnt * 4], sizeof(off));
+        offs += off;
+        type_map >>= 4;
+        cnt++;
+    }
+    return -1;
+}
+
 static int coff2exe(const char *fname, const char *oname, int info)
 {
-  char ibuf[1024], ibuf0[256];
-  int has_o0 = 0;
+  char ibuf[1024];
 #define IPRINTF(...) \
     snprintf(ibuf + strlen(ibuf), sizeof(ibuf) - strlen(ibuf), __VA_ARGS__)
   int ifile;
@@ -176,7 +221,6 @@ static int coff2exe(const char *fname, const char *oname, int info)
   char buf[4096];
   int rbytes;
   long coffset = 0;
-  uint32_t ooffs = 0;
   unsigned char mzhdr_buf[0x40];
   uint32_t coff_file_size = 0;
   int rmoverlay = 0;
@@ -185,14 +229,15 @@ static int coff2exe(const char *fname, const char *oname, int info)
   int ret = 0;
   char tmpl[] = "/tmp/djstub_XXXXXX";
   const uint32_t stub_size = _binary_stub_exe_end - _binary_stub_exe_start;
+  uint8_t stub_v = 0;
+  uint16_t flags = 0;
 
   ibuf[0] = '\0';
-  ibuf0[0] = '\0';
 
   ifile = open(fname, O_RDONLY);
   if (ifile < 0)
   {
-    perror("open()");
+    fprintf(stderr, "open(%s): %s\n", fname, strerror(errno));
     return -1;
   }
 
@@ -207,90 +252,92 @@ static int coff2exe(const char *fname, const char *oname, int info)
     {
       if (buf[8] == 4 && buf[9] == 0)  // lfanew
       {
-        uint32_t offs;
-        uint16_t flags = 0;
+        int noff;
+        uint32_t offs, nmoff;
         int dyn = 0;
         int dj32 = 0;
-        int stub_v4 = (buf[0x3b] >= 4 && buf[0x3b] < 0x20);
-        int stub_v6 = stub_v4 && buf[0x3b] >= 6;
-        int stub_v7 = stub_v6 && buf[0x3b] >= 7;
+        int elf = 0;
+        char name[20] = {};
 
-        if (stub_v6)
-          memcpy(&flags, &buf[0x38], sizeof(flags));
-        if (stub_v6 && !(flags & 0x4000))
+        stub_v = buf[0x3b];
+        if (stub_v < 8) {
+          fprintf(stderr, "stub too old: %i\n", buf[0x3b]);
+          return -1;
+        }
+        memcpy(&flags, &buf[0x38], sizeof(flags));
+        if (!(flags & 0x4000) && (flags & 0x80))
           dyn++;
-        if (stub_v6 && (flags & 0x2000))
+        if (flags & 0x2000)
           dj32++;
+        if (flags & 0x80)
+          elf++;
         memcpy(&offs, &buf[0x3c], sizeof(offs));
         coffset = offs;
         memcpy(mzhdr_buf, buf, sizeof(mzhdr_buf));
         can_copy_ovl++;
         if (rmstub || strip)
           rmoverlay++;
+        memcpy(&nmoff, &buf[0x28], sizeof(noff));
+        if (nmoff && (noff = find_offs(dj32 ? OT_DJ32 : OT_E64, buf)) != -1) {
+          lseek(ifile, offs + noff + nmoff, SEEK_SET);
+          rc = read(ifile, name, sizeof(name));
+          if (rc == sizeof(name))
+            name[rc - 1] = '\0';
+          else
+            name[0] = '\0';
+          lseek(ifile, offs, SEEK_SET);
+        }
 
         if (info) {
-          strcat(ibuf, "dj64 file format");
-          if (dj32)
-            strcat(ibuf, " (dj32)");
-          strcat(ibuf, "\n");
+          strcat(ibuf, "dj64 file format\n");
           if (dyn)
             strcat(ibuf, "DOS payload dynamic\n");
         }
         if (info || rmoverlay) {
-          int cnt = 0;
           uint32_t sz = 0;
-          char name[20] = {};
-          for (i = 0x1c; i < 0x28; i += 4) {
-            uint32_t sz0;
-            memcpy(&sz0, &buf[i], sizeof(sz0));
-            if (!sz0)
+          uint16_t type_map;
+          int type = 0;
+
+          memcpy(&type_map, &buf[0x36], sizeof(type_map));
+          if (!type_map) {
+            memcpy(&sz, &buf[0x1c], sizeof(sz));
+            IPRINTF("Overlay 0 (%s)\n\tat %i, size %i\n", payload_dsc[OT_COFF],
+                  offs, sz);
+          } else for (i = 0; type_map; type_map >>= 4, i++) {
+            int prname;
+
+            type = type_map & 0xf;
+            prname = (type == OT_D64 || type == OT_D32);
+            memcpy(&sz, &buf[0x1c + i * 4], sizeof(sz));
+            if (!sz)
               break;
-            sz = sz0;
-            if (!cnt) {
-              has_o0++;
-              if (stub_v6 && !stub_v7) {
-                memcpy(&ooffs, &buf[0x2c], sizeof(ooffs));
-                offs += ooffs;
-              }
-            }
-            if (stub_v6 && !stub_v7 && cnt == 1 && (flags & 0x8000))
-              offs = coffset;
             if (info) {
-              int prname = 0;
-              if (stub_v6 && !dj32 && cnt + dyn == 1 && buf[0x28]) {
-                uint32_t noff;
-                memcpy(&noff, &buf[0x28], sizeof(noff));
-                lseek(ifile, offs + noff, SEEK_SET);
-                rc = read(ifile, name, sizeof(name));
-                if (rc == sizeof(name))
-                  name[rc - 1] = '\0';
-                else
-                  name[0] = '\0';
-              }
-              prname = (name[0] && cnt + dyn + dj32 == 2);
-              IPRINTF("Overlay %i (%s%s%s)\n\tat %i, size %i\n", cnt,
-                  identify(cnt + dyn + dj32, ifile, offs),
+              IPRINTF("Overlay %i (%s%s%s)\n\tat %i, size %i\n", i,
+                  identify(type, ifile, offs),
                   prname ? " for " : "", prname ? name : "",
                   offs, sz);
             }
             offs += sz;
-            cnt++;
           }
           if (rmstub) {
             /* rmstub removes all overlays */
-            memcpy(&coff_file_size, &buf[0x1c + (dj32 ? 0 : !dyn) * 4], sizeof(coff_file_size));
-          } else if (strip && cnt > 1 + (dj32 ? 0 : !dyn)) {
+            int tp = elf ? (dj32 ? OT_DJ32 : OT_E64) : OT_COFF;
+            int off = find_offs(tp, buf);
+            int sz = find_size(tp, buf);
+            if (off == -1 || sz == -1) {
+              fprintf(stderr, "unable to find ovl %i\n", tp);
+              return -1;
+            }
+            coffset += off;
+            coff_file_size = sz;
+            break;
+          } else if (strip && (type == OT_D64 || type == OT_D32)) {
             coff_file_size = offs - sz - coffset;
-            memset(&mzhdr_buf[i - 4], 0, 4);
+            assert(i > 1);
+            memset(&mzhdr_buf[0x1c + (i - 1) * 4], 0, 4);
           }
-          if (stub_v4 && !stub_v6) {
-            if (buf[0x2e])
-              IPRINTF("Overlay name: %.12s\n", buf + 0x2e);
-          }
-          if (stub_v4) {
-            IPRINTF("Stub version: %i\n", buf[0x3b]);
-            IPRINTF("Stub flags: 0x%04x\n", flags);
-          }
+          IPRINTF("Stub version: %i\n", buf[0x3b]);
+          IPRINTF("Stub flags: 0x%04x\n", flags);
         }
       }
       else
@@ -306,22 +353,22 @@ static int coff2exe(const char *fname, const char *oname, int info)
     }
     else if (buf[0] == 0x4c && buf[1] == 0x01) /* it's a COFF */
     {
-      if (info) {
-        if (has_o0)
-          strcpy(ibuf0, "i386/COFF");
-        else
-          IPRINTF("COFF payload at %li\n", coffset);
+      if (info && !stub_v)
+        IPRINTF("COFF payload at %li\n", coffset);
+      if (stub_v && (flags & 0x80)) {
+        fprintf(stderr, "Unexpected COFF payload, header is invalid\n");
+        return -1;
       }
       break;
     }
     else if (buf[0] == 0x7f && buf[1] == 0x45 &&
                 buf[2] == 0x4c && buf[3] == 0x46) /* it's an ELF */
     {
-      if (info) {
-        if (has_o0)
-          snprintf(ibuf0, sizeof(ibuf0), "%s/ELF", elf_id(ifile, coffset + ooffs));
-        else
-          IPRINTF("ELF payload for %s at %li\n", elf_id(ifile, coffset), coffset);
+      if (info && !stub_v)
+        IPRINTF("ELF payload for %s at %li\n", elf_id(ifile, coffset), coffset);
+      if (stub_v && !(flags & 0x80)) {
+        fprintf(stderr, "Unexpected ELF payload, header is invalid\n");
+        return -1;
       }
       break;
     }
@@ -332,6 +379,8 @@ static int coff2exe(const char *fname, const char *oname, int info)
     }
   }
 
+  if (stub_v)
+    stub_ver = stub_v;
   if (!coff_file_size)
     coff_file_size = lseek(ifile, 0, SEEK_END) - coffset;
   lseek(ifile, coffset, SEEK_SET);
@@ -347,10 +396,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
   memcpy(_binary_stub_exe_start + 0x3c, &stub_size, sizeof(stub_size));
 
   if (info) {
-    if (has_o0)
-      printf(ibuf, ibuf0);
-    else
-      printf("%s", ibuf);
+    printf("%s", ibuf);
     close(ifile);
     return 0;
   }
@@ -358,7 +404,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
   if (oname) {
     ofile = open(oname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (ofile < 0) {
-      perror("open()");
+      fprintf(stderr, "open(%s): %s\n", oname, strerror(errno));
       return -1;
     }
   } else {
@@ -555,8 +601,7 @@ int main(int argc, char **argv)
     ofile = open(oname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (ofile < 0)
     {
-      fprintf(stderr, "Cannot open output file to generate\n");
-      perror("open()");
+      fprintf(stderr, "open(%s): %s\n", oname, strerror(errno));
       return 1;
     }
     v_printf("stubify: generate %s\n", oname);
