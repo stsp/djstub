@@ -481,7 +481,7 @@ int main(int argc, char **argv)
   uint32_t nmoffs = 0;
   uint16_t stub_flags = 0;
   uint16_t type_map = 0;
-  int type, type_shift = 0;
+  int type = 0, type_shift = 0;
   int rc, req_ver = 0;
 
   if (_binary_stub_exe_start[0] != 'M' || _binary_stub_exe_start[1] != 'Z' ||
@@ -531,6 +531,10 @@ int main(int argc, char **argv)
       generate = 1;
       break;
     case 'l':
+      if (!type) {
+          fprintf(stderr, "Error: missing type value\n");
+          return 1;
+      }
       assert(noverlay < MAX_OVL);
       overlay[noverlay++] = optarg;
       type_shift += 4;
@@ -538,7 +542,7 @@ int main(int argc, char **argv)
     case 't':
       type = atoi(optarg);
       if (!type) {
-          fprintf(stderr, "wrong -t value %s\n", optarg);
+          fprintf(stderr, "Error: wrong -t value %s\n", optarg);
           return 1;
       }
       type_map |= type << type_shift;
