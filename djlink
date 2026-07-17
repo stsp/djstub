@@ -100,9 +100,11 @@ fi
 CMD="djstubify -g $* $T -l $SO $DOPT"
 #echo "$CMD"
 $CMD
+RC=$?
 
 [ -z "$TMP" ] || rm "$TMP"
 [ -z "$TMP2" ] || rm "$TMP2"
 if [ -n "$DBG" -a -f "$DBG" ]; then
   rm $DBG
 fi
+exit $RC
