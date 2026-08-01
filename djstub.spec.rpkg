@@ -28,7 +28,7 @@ Can be used with djgpp and dj64 tool-chains.
 {{{ git_dir_setup_macro }}}
 
 %build
-make
+make prefix=%{_prefix}
 
 %check
 
@@ -38,3 +38,5 @@ make install DESTDIR=%{buildroot} prefix=%{_prefix}
 %files
 %defattr(-,root,root)
 %{_bindir}/*
+%{_datadir}/djstub2
+%{_libexecdir}/djstub2
