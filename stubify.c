@@ -38,7 +38,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <assert.h>
-#include <elf.h>
+#include "src/elf.h"
 
 #define str(s) #s
 #define ASMSYM(s) asm(str(s))
