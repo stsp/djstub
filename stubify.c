@@ -80,12 +80,12 @@ static int copy_file(const char *ovl, int ofile)
 enum { OT_COFF, OT_DJ32, OT_E32, OT_E64, OT_D64, OT_D32, OT_MAX };
 
 static const char *payload_dsc[] = {
-  [OT_COFF] = "i386/COFF DOS payload",
-  [OT_DJ32] = "%s/ELF (dj32) DOS payload",
-  [OT_E32] = "%s/ELF (dj64) DOS payload",
-  [OT_E64] = "%s/ELF host payload",
-  [OT_D64] = "%s/ELF debug info",
-  [OT_D32] = "%s/ELF (dj32) debug info",
+  [OT_COFF] = "COFF DOS payload",
+  [OT_DJ32] = "ELF (dj32) DOS payload",
+  [OT_E32] = "ELF (dj64) DOS payload",
+  [OT_E64] = "ELF host payload",
+  [OT_D64] = "ELF debug info",
+  [OT_D32] = "ELF (dj32) debug info",
 };
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -133,7 +133,7 @@ static const char *identify(int num, int fd, long offs)
   static char ret[256];
   if (num == OT_COFF || num >= OT_MAX)
     return "???";
-  snprintf(ret, sizeof(ret), payload_dsc[num], elf_id(fd, offs));
+  snprintf(ret, sizeof(ret), "%s/%s", elf_id(fd, offs), payload_dsc[num]);
   return ret;
 }
 
@@ -298,8 +298,8 @@ static int coff2exe(const char *fname, const char *oname, int info)
           memcpy(&type_map, &buf[0x36], sizeof(type_map));
           if (!type_map) {
             memcpy(&sz, &buf[0x1c], sizeof(sz));
-            IPRINTF("Overlay 0 (%s)\n\tat %i, size %i\n", payload_dsc[OT_COFF],
-                  offs, sz);
+            IPRINTF("Overlay 0 (i386/%s)\n\tat %i, size %i\n",
+                  payload_dsc[OT_COFF], offs, sz);
           } else for (i = 0; type_map; type_map >>= 4, i++) {
             int prname;
 
