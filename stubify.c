@@ -38,13 +38,10 @@
 #include <errno.h>
 #include <getopt.h>
 #include <assert.h>
-#include <elf.h>
+#include "src/elf.h"
 
-#define str(s) #s
-#define ASMSYM(s) asm(str(s))
-extern char _binary_stub_exe_end[] ASMSYM(_binary_stub_exe_end);
-extern char _binary_stub_exe_size[] ASMSYM(_binary_stub_exe_size);
-extern char _binary_stub_exe_start[] ASMSYM(_binary_stub_exe_start);
+static uint8_t *_binary_stub_exe_start;
+static size_t _binary_stub_exe_size;
 
 #define v_printf if(verbose)printf
 static int verbose;
@@ -228,7 +225,7 @@ static int coff2exe(const char *fname, const char *oname, int info)
   int i;
   int ret = 0;
   char tmpl[] = "/tmp/djstub_XXXXXX";
-  const uint32_t stub_size = _binary_stub_exe_end - _binary_stub_exe_start;
+  const uint32_t stub_size = _binary_stub_exe_size;
   uint8_t stub_v = 0;
   uint16_t flags = 0;
 
@@ -417,8 +414,8 @@ static int coff2exe(const char *fname, const char *oname, int info)
 
   if (!rmstub) {
     int rc = write(ofile, _binary_stub_exe_start,
-        _binary_stub_exe_end-_binary_stub_exe_start);
-    assert(rc == _binary_stub_exe_end - _binary_stub_exe_start);
+        _binary_stub_exe_size);
+    assert(rc == _binary_stub_exe_size);
   }
 
   /* copy either entire payload, or, in case of rmoverlay, only COFF */
@@ -483,14 +480,9 @@ int main(int argc, char **argv)
   uint16_t type_map = 0;
   int type = 0, type_shift = 0;
   int rc, req_ver = 0;
+  int ret = 0;
 
-  if (_binary_stub_exe_start[0] != 'M' || _binary_stub_exe_start[1] != 'Z' ||
-        _binary_stub_exe_start[8] != 4 || _binary_stub_exe_start[9] != 0) {
-    fprintf(stderr, "stub corrupted, bad build\n");
-    return EXIT_FAILURE;
-  }
-
-  while ((c = getopt(argc, argv, "dhvV:irsgl:t:o:n:f:")) != -1)
+  while ((c = getopt(argc, argv, "dhvV:irsgl:t:o:n:f:S:")) != -1)
   {
     switch (c) {
     case 'v':
@@ -559,12 +551,44 @@ int main(int argc, char **argv)
     case 'h':
       print_help();
       return 0;
+    case 'S': {
+      int fd = open(optarg, O_RDONLY);
+      struct stat sb;
+      if (fd == -1) {
+        fprintf(stderr, "failed to open %s: %s\n", optarg, strerror(errno));
+        return EXIT_FAILURE;
+      }
+      rc = fstat(fd, &sb);
+      if (rc) {
+        perror("stat()");
+        close(fd);
+        return EXIT_FAILURE;
+      }
+      _binary_stub_exe_start = malloc(sb.st_size);
+      assert(_binary_stub_exe_start);
+      rc = read(fd, _binary_stub_exe_start, sb.st_size);
+      assert(rc == sb.st_size);
+      close(fd);
+      _binary_stub_exe_size = sb.st_size;
+      break;
+    }
     default:
       fprintf(stderr, "Unknown option: %c\n", c);
       print_help();
       return 1;
     }
   }
+
+  if (!_binary_stub_exe_start) {
+    fprintf(stderr, "-S agrument missing\n");
+    return EXIT_FAILURE;
+  }
+  if (_binary_stub_exe_start[0] != 'M' || _binary_stub_exe_start[1] != 'Z' ||
+        _binary_stub_exe_start[8] != 4 || _binary_stub_exe_start[9] != 0) {
+    fprintf(stderr, "stub corrupted, bad build\n");
+    return EXIT_FAILURE;
+  }
+
   if (!req_ver && stub_ver >= 8 && noverlay) {
     if (stub_ver == 8) {
       stub_ver = 7;  // backward-compat
@@ -577,7 +601,7 @@ int main(int argc, char **argv)
   {
     int ofile;
     int i;
-    const uint32_t stub_size = _binary_stub_exe_end - _binary_stub_exe_start;
+    const uint32_t stub_size = _binary_stub_exe_size;
 
     if (!oname) {
       fprintf(stderr, "djstubify: -o missing\n");
@@ -611,8 +635,8 @@ int main(int argc, char **argv)
     v_printf("stubify: generate %s\n", oname);
 
     rc = write(ofile, _binary_stub_exe_start,
-        _binary_stub_exe_end-_binary_stub_exe_start);
-    assert(rc == _binary_stub_exe_end - _binary_stub_exe_start);
+        _binary_stub_exe_size);
+    assert(rc == _binary_stub_exe_size);
 
     for (i = 0; i < noverlay; i++)
     {
@@ -635,13 +659,18 @@ int main(int argc, char **argv)
     if (argc - optind < 1)
     {
       print_help();
-      return 1;
+      ret = 1;
+      goto out;
     }
 
     err = coff2exe(argv[argc - 1], oname, info);
-    if (err)
-      return 1;
+    if (err) {
+      ret = 1;
+      goto out;
+    }
   }
 
-  return 0;
+out:
+  free(_binary_stub_exe_start);
+  return ret;
 }

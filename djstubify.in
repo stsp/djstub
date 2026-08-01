@@ -1,0 +1,14 @@
+#!/bin/sh
+
+die() {
+    echo $1
+    exit 1
+}
+
+stub=@datadir@/djstub2/stub.exe
+bin=@libexecdir@/djstub2/djstubify2.bin
+
+[ -r "$stub" ] || die "$stub not found"
+[ -r "$bin" ] || die "$bin not found"
+
+$bin -S $stub $@
