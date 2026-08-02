@@ -9,7 +9,7 @@ Build-Depends:
 Homepage: https://github.com/stsp/djstub
 
 Package: djstub
-Architecture: any
+Architecture: all
 Depends: ${misc:Depends}, ${shlibs:Depends}, python3
 Description: advanced djgpp-compatible stub subsystem
  go32-compatible stub, with support of COFF, PE and ELF formats.
