@@ -34,7 +34,7 @@ rmstub: bool = False
 overlay: list[str] = []
 strip: bool = False
 stub_ver: int = 8
-version: int = 8
+version: int = 9
 
 def v_printf(msg: str):
     global verbose
