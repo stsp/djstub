@@ -30,6 +30,8 @@ make prefix=%{_prefix}
 
 %check
 
+%define debug_package %{nil}
+
 %install
 make install DESTDIR=%{buildroot} prefix=%{_prefix}
 
