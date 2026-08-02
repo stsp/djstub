@@ -1,6 +1,6 @@
 PROJ = djstub2
-PROG = djstubify2.bin
-VER = 8
+PROG = djstubify2.py
+
 # on Termux PREFIX is used
 ifneq ($(PREFIX),)
 prefix := $(PREFIX)
@@ -15,22 +15,20 @@ CFLAGS ?= -Wall -Og -g
 STUB = stub.exe
 CPPFLAGS += -DDJSTUB_VER=$(VER)
 
-all: $(PROG) $(STUB) djstubify
+all: $(STUB) djstubify
 
 force:
 $(STUB): force
 	$(MAKE) -C src ../$@
 
-djstubify: djstubify.in
+djstubify: djstubify.in Makefile
 	sed -E \
     -e "s,@bindir[@],$(bindir),g" \
     -e "s,@datadir[@],$(datadir),g" \
     -e "s,@libexecdir[@],$(libexecdir),g" \
+    -e "s,@prog[@],$(PROG),g" \
     $< >$@
 	chmod +x $@
-
-$(PROG): stubify.o
-	$(CC) $(LDFLAGS) -o $@ $^
 
 install:
 	install -d $(DESTDIR)$(bindir)
@@ -42,6 +40,7 @@ install:
 	install -m 0755 djelfextract $(DESTDIR)$(bindir)
 	install -m 0644 $(STUB) $(DESTDIR)$(datadir)/$(PROJ)
 	install -m 0755 $(PROG) $(DESTDIR)$(libexecdir)/$(PROJ)
+	install -m 0644 elf.py $(DESTDIR)$(libexecdir)/$(PROJ)
 
 uninstall:
 	$(RM) $(DESTDIR)$(bindir)/djstubify
@@ -56,4 +55,4 @@ deb:
 
 clean:
 	$(MAKE) -C src clean
-	rm -f *.o $(STUB) $(PROG) djstubify
+	rm -f *.o $(STUB) djstubify

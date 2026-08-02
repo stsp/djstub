@@ -6,7 +6,7 @@ die() {
 }
 
 stub=@datadir@/djstub2/stub.exe
-bin=@libexecdir@/djstub2/djstubify2.bin
+bin=@libexecdir@/djstub2/@prog@
 
 [ -r "$stub" ] || die "$stub not found"
 [ -r "$bin" ] || die "$bin not found"
