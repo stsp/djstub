@@ -1,3 +1,11 @@
+djstub (0.9-1) resolute; urgency=low
+
+  * 0.9
+  * new stub format
+  * python port
+
+ -- Stas Sergeev <stsp@users.sourceforge.net>  Tue, 11 Aug 2026 15:30:00 +0300
+
 djstub (0.8-1) resolute; urgency=low
 
   * 0.8
