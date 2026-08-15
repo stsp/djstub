@@ -6,6 +6,7 @@ Name: {{{ git_dir_name }}}
 Version: {{{ git_dir_version }}}
 Release: 1%{?dist}
 Summary: advanced djgpp-compatible stub
+BuildArch: noarch
 
 Group: Development/Tools
 
