@@ -11,9 +11,7 @@ bindir ?= $(prefix)/bin
 datadir ?= $(prefix)/share
 libexecdir ?= $(prefix)/libexec
 
-CFLAGS ?= -Wall -Og -g
 STUB = stub.exe
-CPPFLAGS += -DDJSTUB_VER=$(VER)
 
 all: $(STUB) djstubify
 
