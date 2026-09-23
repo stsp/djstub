@@ -3,7 +3,7 @@ PRG = stub.exe
 TGT = $(TOP)/$(PRG)
 CC = smlrcc
 SMCFLAGS = -dosp
-SMLDFLAGS = -dosp
+SMLDFLAGS = -dosp -maxheap 0x80000
 CFILES = stub.c coff.c elf.c util.c dpmi.c ministub.c
 OBJECTS = $(CFILES:.c=.o)
 
