@@ -445,6 +445,8 @@ void fullstub(int argc, char *argv[], char *envp[])
         stub_debug("Found payload of size %li at 0x%lx\n", nsize, noffset);
     stubinfo.stubinfo_ver |= LOADER_VER;
 
+    shrink_low();
+
     stub_debug("Jump to entry...\n");
 #ifdef __GNUC__
     asm volatile(

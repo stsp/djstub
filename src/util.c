@@ -168,6 +168,22 @@ static void int2f(__dpmi_int_regs *r)
 }
 #endif
 
+extern void* __dpmi_psp;
+static unsigned esp;
+
+void shrink_low(void)
+{
+  __dpmi_int_regs regs = {0};
+
+  /* nuke out initial stub as it is no longer needed */
+  asm("mov [_esp], esp\n");
+  assert(esp > 0x110000); /* not going to free own stack */
+  regs.eax = 0x4a00;
+  regs.ebx = 0x10;  // leave only PSP
+  regs.es = (unsigned)__dpmi_psp >> 4;
+  __dpmi_int(0x21, &regs);
+}
+
 int dpmi_init(unsigned short *psp_sel)
 {
 #ifdef __GNUC__

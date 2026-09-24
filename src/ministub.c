@@ -72,9 +72,7 @@ static int enter_stub(unsigned sel, unsigned off,
   );
 }
 
-extern void* __dpmi_psp;
 extern void* __dpmi_env;
-static unsigned esp;
 
 int main(int argc, char *argv[])
 {
@@ -85,7 +83,6 @@ int main(int argc, char *argv[])
   int envc, i, letter;
   int err;
   int fd;
-  __dpmi_int_regs regs = {0};
   unsigned short psp_sel;
 
   if (argc == 0) {
@@ -147,13 +144,7 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  /* nuke out initial stub as it is no longer needed */
-  asm("mov [_esp], esp\n");
-  assert(esp > 0x110000); /* not going to free own stack */
-  regs.eax = 0x4a00;
-  regs.ebx = 0x10;  // leave only PSP
-  regs.es = (unsigned)__dpmi_psp >> 4;
-  __dpmi_int(0x21, &regs);
+  shrink_low();
   /* try to nuke PM part as well */
   err = dpmi_init(&psp_sel);
   if (err) {
