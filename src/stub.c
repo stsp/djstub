@@ -96,26 +96,9 @@ extern void* __dpmi_env;
 
 static unsigned short alloc_psp(void)
 {
-  asm(
-    "mov eax, 0\n"    // alloc desc for PSP
-    "mov ecx, 1\n"    // 1 desc
-    "int 31h\n"
-    "push ax\n"       // psp
-    "mov eax, 7\n"    // set base
-    "pop bx\n"
-    "push bx\n"
-    "extern  ___dpmi_psp\n"
-    "mov cx, [___dpmi_psp + 2]\n"
-    "mov dx, [___dpmi_psp]\n"
-    "int 31h\n"
-    "mov eax, 8\n"    // set limit
-    "pop bx\n"
-    "push bx\n"
-    "mov cx, 0\n"
-    "mov dx, 0ffh\n"  // to PSP size
-    "int 31h\n"
-    "pop ax\n"
-  );
+  unsigned short sel = dpmi_segment_to_descriptor((unsigned)__dpmi_psp >> 4);
+  dpmi_set_segment_limit(sel, 0xff);
+  return sel;
 }
 
 static unsigned short __my_ds(void)
