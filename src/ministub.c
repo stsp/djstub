@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <assert.h>
@@ -119,6 +120,16 @@ int main(int argc, char *argv[])
       }
     }
   }
+
+  /* argv[0] resides in lowmem. Copy upwards because we discard lowmem. */
+#if 0
+  /* strdup is missing in smallerc */
+  argv[0] = strdup(argv[0]);
+#else
+  char *buf = malloc(strlen(argv[0]) + 1);
+  strcpy(buf, argv[0]);
+  argv[0] = buf;
+#endif
   err = DPMIQueryExtension(&sel, &off, ext_nm);
   if (err) {
     printf("warning: %s unsupported, using builtin loader...\n", ext_nm);
