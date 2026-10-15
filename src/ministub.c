@@ -86,6 +86,7 @@ int main(int argc, char *argv[])
   int err;
   int fd;
   __dpmi_int_regs regs = {0};
+  unsigned short psp_sel;
 
   if (argc == 0) {
     puts("no env");
@@ -154,7 +155,7 @@ int main(int argc, char *argv[])
   regs.es = (unsigned)__dpmi_psp >> 4;
   __dpmi_int(0x21, &regs);
   /* try to nuke PM part as well */
-  err = dpmi_init();
+  err = dpmi_init(&psp_sel);
   if (err) {
     fprintf(stderr, "DPMI unavailable\n");
     return EXIT_FAILURE;

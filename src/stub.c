@@ -156,12 +156,13 @@ void fullstub(int argc, char *argv[], char *envp[])
     struct ldops *ops = NULL;
     uint8_t stub_ver = 0;
     const char *fname = argv[0];
+    unsigned short psp_sel;
 
     if (argc == 0) {
         fprintf(stderr, "no env\n");
         exit(EXIT_FAILURE);
     }
-    rc = dpmi_init();
+    rc = dpmi_init(&psp_sel);
     if (rc) {
 #ifdef __GNUC__
         psp_sel = _psp;

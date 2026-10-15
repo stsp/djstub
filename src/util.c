@@ -30,7 +30,7 @@
 #define stub_debug(...)
 #endif
 
-unsigned short psp_sel;
+static unsigned short _psp_sel;
 
 static void farmemcpy(char_far ptr, unsigned long offset, char *src,
                unsigned long length)
@@ -131,7 +131,7 @@ static unsigned lcall(unsigned sel, unsigned off, unsigned ax)
     "pop eax\n"
     "pushf\n"
     "pop eax\n"
-    "mov [_psp_sel], es\n"
+    "mov [__psp_sel], es\n"
     "pop es\n"
   );
 }
@@ -168,17 +168,15 @@ static void int2f(__dpmi_int_regs *r)
 }
 #endif
 
-int dpmi_init(void)
+int dpmi_init(unsigned short *psp_sel)
 {
 #ifdef __GNUC__
     union REGPACK r = {};
     char_far sw;
     unsigned mseg = 0, f;
 
-#define CF 1
     r.w.ax = 0x1687;
     intr(0x2f, &r);
-    if ((r.w.flags & CF) || r.w.ax != 0) {
         stub_debug("DPMI unavailable\n");
         return -1;
     }
@@ -223,7 +221,7 @@ int dpmi_init(void)
 #define CF 1
     r.eax = 0x1687;
     int2f(&r);
-    if ((r.flags & CF) || r.eax != 0) {
+    if (r.flags & CF) {
         stub_debug("DPMI unavailable\n");
         return -1;
     }
@@ -235,11 +233,14 @@ int dpmi_init(void)
         fprintf(stderr, "invalid DPMI server, %i para requested\n", r.esi);
         exit(EXIT_FAILURE);
     }
+
     f = lcall(r.es, r.edi, 1);
     if (f & CF) {
         fprintf(stderr, "DPMI init failed\n");
         exit(EXIT_FAILURE);
     }
+
+    *psp_sel = _psp_sel;
 #endif
     return 0;
 }
