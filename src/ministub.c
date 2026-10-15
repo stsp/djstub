@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <assert.h>
@@ -71,9 +72,7 @@ static int enter_stub(unsigned sel, unsigned off,
   );
 }
 
-extern void* __dpmi_psp;
 extern void* __dpmi_env;
-static unsigned esp;
 
 int main(int argc, char *argv[])
 {
@@ -84,7 +83,7 @@ int main(int argc, char *argv[])
   int envc, i, letter;
   int err;
   int fd;
-  __dpmi_int_regs regs = {0};
+  unsigned short psp_sel;
 
   if (argc == 0) {
     puts("no env");
@@ -119,7 +118,20 @@ int main(int argc, char *argv[])
       }
     }
   }
-  err = DPMIQueryExtension(&sel, &off, ext_nm);
+
+  /* argv[0] resides in lowmem. Copy upwards because we discard lowmem. */
+#if 0
+  /* strdup is missing in smallerc */
+  argv[0] = strdup(argv[0]);
+#else
+  char *buf = malloc(strlen(argv[0]) + 1);
+  strcpy(buf, argv[0]);
+  argv[0] = buf;
+#endif
+  if (getenv("COMCOM_FULLSTUB"))
+    err = 1;
+  else
+    err = DPMIQueryExtension(&sel, &off, ext_nm);
   if (err) {
     printf("warning: %s unsupported, using builtin loader...\n", ext_nm);
     fullstub(argc, argv, envp);
@@ -132,15 +144,8 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  /* nuke out initial stub as it is no longer needed */
-  asm("mov [_esp], esp\n");
-  assert(esp > 0x110000); /* not going to free own stack */
-  regs.eax = 0x4a00;
-  regs.ebx = 0x10;  // leave only PSP
-  regs.es = (unsigned)__dpmi_psp >> 4;
-  __dpmi_int(0x21, &regs);
   /* try to nuke PM part as well */
-  err = dpmi_init();
+  err = dpmi_init(0, &psp_sel);
   if (err) {
     fprintf(stderr, "DPMI unavailable\n");
     return EXIT_FAILURE;

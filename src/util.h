@@ -47,8 +47,8 @@ typedef struct
 void farmemset(char_far ptr, uint32_t offset, uint8_t val, uint32_t size);
 long _long_read(int file, char_far buf, unsigned long offset,
     unsigned long size);
-int dpmi_init(void);
-
-extern unsigned short psp_sel;
+int dpmi_init(unsigned short para, unsigned short *psp_sel);
+void shrink_low(unsigned short para);
+unsigned short get_low_pool(void);
 
 #endif
