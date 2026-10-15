@@ -130,7 +130,10 @@ int main(int argc, char *argv[])
   strcpy(buf, argv[0]);
   argv[0] = buf;
 #endif
-  err = DPMIQueryExtension(&sel, &off, ext_nm);
+  if (getenv("COMCOM_FULLSTUB"))
+    err = 1;
+  else
+    err = DPMIQueryExtension(&sel, &off, ext_nm);
   if (err) {
     printf("warning: %s unsupported, using builtin loader...\n", ext_nm);
     fullstub(argc, argv, envp);
