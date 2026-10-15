@@ -119,13 +119,14 @@ long _long_read(int file, char_far buf, unsigned long offset,
 }
 
 #ifndef __GNUC__
-static unsigned lcall(unsigned sel, unsigned off, unsigned ax)
+static unsigned lcall(unsigned sel, unsigned off, unsigned ax, unsigned bx)
 {
   asm(
     "push es\n"
     "push dword [ebp+8]\n "  // sel
     "push dword [ebp+12]\n"  // off
     "mov eax, [ebp+16]\n"    // ax
+    "mov ebx, [ebp+20]\n"    // bx
     "call far [ss:esp]\n"
     "pop eax\n"
     "pop eax\n"
@@ -170,8 +171,14 @@ static void int2f(__dpmi_int_regs *r)
 
 extern void* __dpmi_psp;
 static unsigned esp;
+#define CF 1
 
-void shrink_low(void)
+unsigned short get_low_pool(void)
+{
+  return ((unsigned)__dpmi_psp >> 4) + 0x10;
+}
+
+void shrink_low(unsigned short para)
 {
   __dpmi_int_regs regs = {0};
 
@@ -179,12 +186,30 @@ void shrink_low(void)
   asm("mov [_esp], esp\n");
   assert(esp > 0x110000); /* not going to free own stack */
   regs.eax = 0x4a00;
-  regs.ebx = 0x10;  // leave only PSP
+  regs.ebx = 0x10 + para;  // leave only PSP+extra
   regs.es = (unsigned)__dpmi_psp >> 4;
   __dpmi_int(0x21, &regs);
+  if (regs.flags & CF) {
+    fprintf(stderr, "failed to realloc to %x, only %x\n", para + 0x10,
+        regs.ebx);
+    exit(EXIT_FAILURE);
+  }
 }
 
-int dpmi_init(unsigned short *psp_sel)
+static void free_low(unsigned short seg)
+{
+  __dpmi_int_regs regs = {0};
+
+  regs.eax = 0x4900;
+  regs.es = seg;
+  __dpmi_int(0x21, &regs);
+  if (regs.flags & CF) {
+    fprintf(stderr, "failed to free to %x\n", seg);
+    exit(EXIT_FAILURE);
+  }
+}
+
+int dpmi_init(unsigned short para, unsigned short *psp_sel)
 {
 #ifdef __GNUC__
     union REGPACK r = {};
@@ -201,6 +226,9 @@ int dpmi_init(unsigned short *psp_sel)
         exit(EXIT_FAILURE);
     }
     sw = __MK_FP(r.w.es, r.w.di);
+
+    shrink_low(r.w.si);
+
     if (r.w.si) {
 #if 0
         link_umb(1);
@@ -233,9 +261,10 @@ int dpmi_init(unsigned short *psp_sel)
 #else
     __dpmi_int_regs r = {0};
     unsigned f;
+    uint32_t newseg;
 
-#define CF 1
     r.eax = 0x1687;
+    r.ebx = 0x1000;   // request pool info
     int2f(&r);
     if (r.flags & CF) {
         stub_debug("DPMI unavailable\n");
@@ -245,16 +274,22 @@ int dpmi_init(unsigned short *psp_sel)
         fprintf(stderr, "DPMI-32 unavailable\n");
         exit(EXIT_FAILURE);
     }
-    if (r.esi) {
-        fprintf(stderr, "invalid DPMI server, %i para requested\n", r.esi);
+    if ((r.ebx & 0x1402) != 0x402 && (r.eax != 0 || r.esi != 0)) {
+        fprintf(stderr, "invalid DPMI server, %x\n", r.ebx);
         exit(EXIT_FAILURE);
     }
+    shrink_low(para + r.esi);
+    newseg = get_low_pool() + para;
+    if (r.esi)
+      memmove((void *)(newseg << 4), (void *)(r.eax << 4), r.esi << 4);
 
-    f = lcall(r.es, r.edi, 1);
+    f = lcall(r.es, r.edi, 1 | (r.esi ? 0x1000 : 0), newseg);
     if (f & CF) {
         fprintf(stderr, "DPMI init failed\n");
         exit(EXIT_FAILURE);
     }
+    if (r.esi)
+      free_low(r.eax);
 
     *psp_sel = _psp_sel;
 #endif

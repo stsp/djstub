@@ -144,9 +144,8 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  shrink_low();
   /* try to nuke PM part as well */
-  err = dpmi_init(&psp_sel);
+  err = dpmi_init(0, &psp_sel);
   if (err) {
     fprintf(stderr, "DPMI unavailable\n");
     return EXIT_FAILURE;

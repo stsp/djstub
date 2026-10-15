@@ -60,36 +60,6 @@ typedef struct {
 } dpmi_dos_block;
 #endif
 
-static void link_umb(int on)
-{
-#ifdef __GNUC__
-    asm volatile("int $0x21\n"
-        :
-        : "a"(0x5803), "b"(on)
-        : "cc");
-#else
-    asm(
-        "mov eax, 0x5803\n"
-        "mov ebx, [ebp + 8]\n"
-        "int 0x21\n"
-    );
-#endif
-    if (on) {
-#ifdef __GNUC__
-        asm volatile("int $0x21\n"
-            :
-            : "a"(0x5801), "b"(0x80)
-            : "cc");
-#else
-        asm(
-            "mov eax, 0x5801\n"
-            "mov ebx, 0x80\n"
-            "int 0x21\n"
-        );
-#endif
-    }
-}
-
 #ifndef __GNUC__
 extern void* __dpmi_psp;
 extern void* __dpmi_env;
@@ -151,7 +121,6 @@ void fullstub(int argc, char *argv[], char *envp[])
     unsigned short mem_hi, mem_lo, si, di;
     unsigned long alloc_size;
     unsigned long stubinfo_mem;
-    dpmi_dos_block db;
     void *handle;
     struct ldops *ops = NULL;
     uint8_t stub_ver = 0;
@@ -161,14 +130,6 @@ void fullstub(int argc, char *argv[], char *envp[])
     if (argc == 0) {
         fprintf(stderr, "no env\n");
         exit(EXIT_FAILURE);
-    }
-    rc = dpmi_init(&psp_sel);
-    if (rc) {
-#ifdef __GNUC__
-        psp_sel = _psp;
-#else
-        psp_sel = alloc_psp();
-#endif
     }
 
     for (i = 0; envp && envp[i]; i++) {
@@ -262,26 +223,18 @@ void fullstub(int argc, char *argv[], char *envp[])
     strncpy(stubinfo.dpmi_server, "CWSDPMI.EXE", sizeof(stubinfo.dpmi_server));
 #define max(a, b) ((a) > (b) ? (a) : (b))
     stubinfo.initial_size = max(va_size, 0x10000);
-    stubinfo.psp_selector = psp_sel;
     /* DJGPP relies on ds_selector, cs_selector and ds_segment all mapping
      * the same real-mode memory block. */
-    link_umb(1);
-#ifdef __GNUC__
-    db = _DPMIAllocateDOSMemoryBlock(stubinfo.minkeep >> 4);
-#else
-    db.rm = dpmi_allocate_dos_memory(stubinfo.minkeep >> 4, &db.pm);
-#endif
-    link_umb(0);
-    stub_debug("rm seg 0x%x\n", db.rm);
-    stubinfo.ds_selector = db.pm;
-    stubinfo.ds_segment = db.rm;
+    stubinfo.ds_segment = get_low_pool();
+    stubinfo.ds_selector = dpmi_segment_to_descriptor(stubinfo.ds_segment);
+    dpmi_set_segment_limit(stubinfo.ds_selector, stubinfo.minkeep - 1);
     /* create alias */
 #ifdef __GNUC__
     asm volatile("int $0x31\n"
         : "=a"(stubinfo.cs_selector)
-        : "a"(0xa), "b"(db.pm));
+        : "a"(0xa), "b"(stubinfo.ds_selector));
 #else
-    stubinfo.cs_selector = dpmi_create_alias_descriptor(db.pm);
+    stubinfo.cs_selector = dpmi_create_alias_descriptor(stubinfo.ds_selector);
 #endif
     /* set descriptor access rights */
 #ifdef __GNUC__
@@ -445,7 +398,16 @@ void fullstub(int argc, char *argv[], char *envp[])
         stub_debug("Found payload of size %li at 0x%lx\n", nsize, noffset);
     stubinfo.stubinfo_ver |= LOADER_VER;
 
-    shrink_low();
+    rc = dpmi_init(stubinfo.minkeep >> 4, &psp_sel);
+    if (rc) {
+        shrink_low(stubinfo.minkeep >> 4);
+#ifdef __GNUC__
+        psp_sel = _psp;
+#else
+        psp_sel = alloc_psp();
+#endif
+    }
+    stubinfo.psp_selector = psp_sel;
 
     stub_debug("Jump to entry...\n");
 #ifdef __GNUC__
